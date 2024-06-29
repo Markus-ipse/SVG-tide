@@ -1,6 +1,10 @@
 import { SvgBasicShape } from "../../types";
 
-const Square = () => {
+interface IconProps {
+  fill?: string;
+}
+
+const Square = ({ fill = "none" }: IconProps) => {
   const size = 16;
   const borderWidth = 2;
   return (
@@ -12,13 +16,13 @@ const Square = () => {
         height={size - borderWidth * 2}
         stroke="black"
         strokeWidth={borderWidth}
-        fill="none"
+        fill={fill}
       />
     </svg>
   );
 };
 
-const Circle = () => {
+const Circle = ({ fill }: IconProps) => {
   const size = 16;
   const borderWidth = 2;
   return (
@@ -29,18 +33,25 @@ const Circle = () => {
         r={size / 2 - borderWidth / 2}
         stroke="black"
         strokeWidth={borderWidth}
-        fill="none"
+        fill={fill}
       />
     </svg>
   );
 };
 
-export const ShapeIcon = ({ shape }: { shape: SvgBasicShape }) => {
+export const ShapeIcon = ({
+  shape,
+  fill,
+}: {
+  shape: SvgBasicShape;
+  fill?: string | false | null;
+}) => {
+  const fillValue = fill || "none";
   switch (shape) {
     case "rect":
-      return <Square />;
+      return <Square fill={fillValue} />;
     case "circle":
-      return <Circle />;
+      return <Circle fill={fillValue} />;
     default:
       return "x";
   }
