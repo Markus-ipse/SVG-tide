@@ -24,6 +24,16 @@ export function App() {
       type: "circle",
       attr: { cx: 150, cy: 150, r: 50, fill: "#FF0000" },
     },
+    {
+      id: 3,
+      type: "polygon",
+      attr: {
+        points: "100,10 150,190 50,190",
+        fill: "lime",
+        stroke: "purple",
+        strokeWidth: 3,
+      },
+    },
   ]);
 
   const [selectedElementId, setSelectedElementId] = useState<number | null>(1);
@@ -55,6 +65,19 @@ export function App() {
     );
   };
 
+  const reorderElement = (currentIndex: number, newIndex: number) => {
+    if (newIndex < 0 || newIndex >= svgElements.length) return;
+
+    setSvgElements((elements) => {
+      const newElements = [...elements];
+      [newElements[currentIndex], newElements[newIndex]] = [
+        newElements[newIndex],
+        newElements[currentIndex],
+      ];
+      return newElements;
+    });
+  };
+
   return (
     <div className="flex m-8">
       <svg width="900" height="600" className="border-2 border-slate-200">
@@ -67,6 +90,7 @@ export function App() {
         <ElementList
           elements={svgElements}
           onRemove={removeElement}
+          onReorder={reorderElement}
           onSelect={setSelectedElementId}
           className="mb-2"
           selectedElementId={selectedElementId}

@@ -8,7 +8,12 @@ interface Props {
 export const AttributeEditor = ({ element: el, onChange }: Props) => {
   return (
     <div>
-      <h4 className="text-l font-semibold">Attributes</h4>
+      <h4 className="text-l font-semibold">
+        Attributes
+        <span className="ml-1 text-sm text-slate-500">
+          ({`${el?.type} ${el?.id}`})
+        </span>
+      </h4>
       <div className="p-2 border-2 border-slate-200">
         {el &&
           Object.entries(el.attr).map(([key, value]) => {
