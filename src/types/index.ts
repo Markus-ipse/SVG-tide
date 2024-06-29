@@ -1,4 +1,4 @@
-export type SvgBasicShape =
+export type SvgShapeElements =
   | "rect"
   | "circle"
   | "ellipse"
@@ -9,6 +9,6 @@ export type SvgBasicShape =
 
 export type SvgElement = {
   id: number;
-  type: SvgBasicShape;
+  type: SvgShapeElements;
   attr: React.SVGProps<SVGElement>;
 };

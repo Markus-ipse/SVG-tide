@@ -15,12 +15,21 @@ export const AttributeEditor = ({ element: el, onChange }: Props) => {
             return (
               <div key={key} className="flex items-center p-1 border-b">
                 <span className="font-semibold">{key}</span>
-                <input
-                  type="text"
-                  className="ml-auto w-20 border-2 border-slate-200 p-1"
-                  value={value}
-                  onChange={(e) => onChange(el.id, key, e.target.value)}
-                />
+                {key === "fill" ? (
+                  <input
+                    type="color"
+                    className="ml-auto w-20 p-1"
+                    value={value}
+                    onChange={(e) => onChange(el.id, key, e.target.value)}
+                  />
+                ) : (
+                  <input
+                    type={"text"}
+                    className="ml-auto w-20 border-2 border-slate-200 p-1"
+                    value={value}
+                    onChange={(e) => onChange(el.id, key, e.target.value)}
+                  />
+                )}
               </div>
             );
           })}

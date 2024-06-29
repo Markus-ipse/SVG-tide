@@ -1,4 +1,4 @@
-import { SvgBasicShape } from "../../types";
+import { SvgShapeElements } from "../../types";
 
 interface IconProps {
   fill?: string;
@@ -43,7 +43,7 @@ export const ShapeIcon = ({
   shape,
   fill,
 }: {
-  shape: SvgBasicShape;
+  shape: SvgShapeElements;
   fill?: string | false | null;
 }) => {
   const fillValue = fill || "none";
