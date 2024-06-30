@@ -1,4 +1,11 @@
-import { createElement, useMemo, useState } from "react";
+import {
+  createElement,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { SvgElement } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
@@ -7,6 +14,8 @@ import { AttributeEditor } from "./components/AttributeEditor";
 let idCounter = 2;
 
 export function App() {
+  const elementsRef = useRef<Map<SvgElement, SVGGElement> | null>(null);
+
   const [svgElements, setSvgElements] = useState<SvgElement[]>([
     {
       id: 1,
@@ -29,19 +38,30 @@ export function App() {
       type: "polygon",
       attr: {
         points: "100,10 150,190 50,190",
-        fill: "lime",
-        stroke: "purple",
-        strokeWidth: 3,
+        fill: "#00dd00",
+        stroke: "#800080",
+        strokeWidth: 2,
       },
     },
   ]);
 
   const [selectedElementId, setSelectedElementId] = useState<number | null>(1);
+  const [selectionBounds, setSelectionBounds] = useState<DOMRect | null>(null);
 
   const selectedElement = useMemo(
     () => svgElements.find((el) => el.id === selectedElementId) ?? null,
     [svgElements, selectedElementId]
   );
+
+  useLayoutEffect(() => {
+    const domNode = selectedElement && getMap().get(selectedElement);
+    if (!domNode) {
+      setSelectionBounds(null);
+      return;
+    }
+
+    setSelectionBounds(domNode.getBBox());
+  }, [selectedElement]);
 
   const addElement = (elem: Omit<SvgElement, "id">) => {
     setSvgElements((elements) => [...elements, { id: idCounter++, ...elem }]);
@@ -78,22 +98,47 @@ export function App() {
     });
   };
 
+  function getMap() {
+    if (!elementsRef.current) {
+      // Initialize the Map on first usage.
+      elementsRef.current = new Map();
+    }
+    return elementsRef.current;
+  }
+
   return (
     <div className="flex m-8">
       <svg width="900" height="600" className="border-2 border-slate-200">
         {svgElements.toReversed().map((element) => {
           const { type, attr } = element;
           return (
-            <g id={element.id.toString()} key={element.id}>
+            <g
+              id={element.id.toString()}
+              key={element.id}
+              ref={(node) => {
+                const map = getMap();
+                if (node) {
+                  map.set(element, node);
+                } else {
+                  map.delete(element);
+                }
+              }}
+            >
               <title>{`${type} ${element.id}`}</title>
               {createElement(type, {
-                onClick: () => setSelectedElementId(element.id),
+                onClick: (e) => {
+                  e.stopPropagation();
+                  setSelectedElementId(element.id);
+                },
                 key: element.id,
                 ...attr,
               })}
             </g>
           );
         })}
+        {selectionBounds && (
+          <SelectionMarker selectionBounds={selectionBounds} />
+        )}
       </svg>
       <div className="ml-2 w-[24rem]">
         <ElementList
@@ -109,3 +154,31 @@ export function App() {
     </div>
   );
 }
+
+const SelectionMarker = ({ selectionBounds }: { selectionBounds: DOMRect }) => {
+  const [dashOffset, setDashOffset] = useState(0);
+
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setDashOffset((prev) => (prev === 9 ? 0 : prev + 1));
+    }, 30);
+
+    return () => {
+      clearInterval(timerId);
+    };
+  }, []);
+
+  return (
+    <rect
+      strokeWidth="2"
+      stroke="black"
+      strokeDasharray="5"
+      strokeDashoffset={dashOffset}
+      fill="none"
+      x={selectionBounds?.x}
+      y={selectionBounds?.y}
+      width={selectionBounds?.width}
+      height={selectionBounds?.height}
+    />
+  );
+};
