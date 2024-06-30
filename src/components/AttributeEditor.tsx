@@ -20,7 +20,7 @@ export const AttributeEditor = ({ element: el, onChange }: Props) => {
             return (
               <div key={key} className="flex items-center p-1 border-b">
                 <span className="font-semibold">{key}</span>
-                {key === "fill" ? (
+                {colorAttributes.includes(key) ? (
                   <input
                     type="color"
                     className="ml-auto w-20 p-1"
@@ -42,3 +42,5 @@ export const AttributeEditor = ({ element: el, onChange }: Props) => {
     </div>
   );
 };
+
+const colorAttributes = ["fill", "stroke"];
