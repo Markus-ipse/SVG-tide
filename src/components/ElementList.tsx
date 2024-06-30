@@ -1,8 +1,8 @@
 import {
-  AiOutlineArrowDown,
-  AiOutlineArrowUp,
-  AiOutlineDelete,
-} from "react-icons/ai";
+  TrashIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+} from "@heroicons/react/24/outline";
 import { SvgElement } from "../types";
 import { ShapeIcon } from "./icons/Shapes";
 import { Button } from "./Button";
@@ -80,30 +80,33 @@ const Element = ({
       <span className="ml-1"> {el.type + el.id}</span>
       <span className="flex ml-auto invisible group-hover:visible">
         <Button
+          className="hover:scale-125"
           disabled={!canMove.up}
           onClick={(e) => {
             e.stopPropagation();
             onReorder(index, index - 1);
           }}
         >
-          <AiOutlineArrowUp />
+          <ArrowUpIcon className="size-4" />
         </Button>
         <Button
+          className="hover:scale-125"
           disabled={!canMove.down}
           onClick={(e) => {
             e.stopPropagation();
             onReorder(index, index + 1);
           }}
         >
-          <AiOutlineArrowDown />
+          <ArrowDownIcon className="size-4" />
         </Button>
         <Button
+          className="hover:scale-125"
           onClick={(e) => {
             e.stopPropagation();
             onRemove(el.id);
           }}
         >
-          <AiOutlineDelete />
+          <TrashIcon className="size-4" />
         </Button>
       </span>
     </div>
