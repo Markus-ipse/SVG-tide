@@ -81,9 +81,18 @@ export function App() {
   return (
     <div className="flex m-8">
       <svg width="900" height="600" className="border-2 border-slate-200">
-        {svgElements.map((element, index) => {
+        {svgElements.map((element) => {
           const { type, attr } = element;
-          return createElement(type, { key: index, ...attr });
+          return (
+            <g id={element.id.toString()}>
+              <title>{`${type} ${element.id}`}</title>
+              {createElement(type, {
+                onClick: () => setSelectedElementId(element.id),
+                key: element.id,
+                ...attr,
+              })}
+            </g>
+          );
         })}
       </svg>
       <div className="ml-2 w-[24rem]">
