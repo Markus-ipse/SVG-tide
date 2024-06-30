@@ -69,8 +69,6 @@ const Element = ({
   onRemove,
   onSelect,
 }: Elementprops) => {
-  console.log(el.type, canMove);
-
   return (
     <div
       className="flex items-center p-1 border-b group"

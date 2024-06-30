@@ -65,7 +65,7 @@ const Polygon = ({ fill }: IconProps) => {
         points={points.map((p) => `${p.x},${p.y}`).join(" ")}
         fill={fill}
         stroke="black"
-        stroke-width="2"
+        strokeWidth="2"
       />
     </svg>
   );
