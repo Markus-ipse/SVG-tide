@@ -69,6 +69,8 @@ const Element = ({
   onRemove,
   onSelect,
 }: Elementprops) => {
+  console.log(el.type, canMove);
+
   return (
     <div
       className="flex items-center p-1 border-b group"
@@ -80,7 +82,7 @@ const Element = ({
       <span className="ml-1"> {el.type + el.id}</span>
       <span className="flex ml-auto invisible group-hover:visible">
         <Button
-          className="hover:scale-125"
+          className="enabled:hover:scale-125"
           disabled={!canMove.up}
           onClick={(e) => {
             e.stopPropagation();
@@ -100,7 +102,7 @@ const Element = ({
           <ArrowDownIcon className="size-4" />
         </Button>
         <Button
-          className="hover:scale-125"
+          className="enabled:hover:scale-125"
           onClick={(e) => {
             e.stopPropagation();
             onRemove(el.id);
