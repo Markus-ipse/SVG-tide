@@ -81,10 +81,10 @@ export function App() {
   return (
     <div className="flex m-8">
       <svg width="900" height="600" className="border-2 border-slate-200">
-        {svgElements.map((element) => {
+        {svgElements.toReversed().map((element) => {
           const { type, attr } = element;
           return (
-            <g id={element.id.toString()}>
+            <g id={element.id.toString()} key={element.id}>
               <title>{`${type} ${element.id}`}</title>
               {createElement(type, {
                 onClick: () => setSelectedElementId(element.id),
