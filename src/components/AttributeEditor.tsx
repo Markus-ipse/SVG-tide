@@ -16,12 +16,15 @@ export const AttributeEditor = ({ element: el, onChange }: Props) => {
           </span>
         )}
       </h4>
-      <div className="p-2 border-2 border-slate-200">
+      <div className="p-2 pb-1 border-2 border-slate-200 ">
         {!el && <div className="text-slate-500">No element selected</div>}
         {el &&
           Object.entries(el.attr).map(([key, value]) => {
             return (
-              <div key={key} className="flex items-center p-1 border-b">
+              <div
+                key={key}
+                className="flex items-center p-1 border-b last-of-type:border-0"
+              >
                 <span className="font-semibold">{key}</span>
                 {colorAttributes.includes(key) ? (
                   <input

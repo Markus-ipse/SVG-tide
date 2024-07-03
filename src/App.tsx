@@ -163,11 +163,11 @@ export function App() {
 }
 
 const SelectionMarker = ({ selectionBounds }: { selectionBounds: DOMRect }) => {
-  const [dashOffset, setDashOffset] = useState(0);
+  const [dashOffset, setDashOffset] = useState(9);
 
   useEffect(() => {
     const timerId = setInterval(() => {
-      setDashOffset((prev) => (prev === 9 ? 0 : prev + 1));
+      setDashOffset((prev) => (prev === 0 ? 9 : prev - 1));
     }, 30);
 
     return () => {

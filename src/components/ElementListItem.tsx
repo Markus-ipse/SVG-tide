@@ -6,6 +6,7 @@ import {
 import { SvgElement } from "../types";
 import { Button } from "./Button";
 import { ShapeIcon } from "./icons/Shapes";
+import { cx } from "class-variance-authority";
 
 type Elementprops = {
   element: SvgElement;
@@ -28,7 +29,15 @@ export const ElementListItem = ({
 }: Elementprops) => {
   return (
     <div
-      className="flex items-center p-1 border-b group"
+      className={cx(
+        "flex",
+        "items-center",
+        "p-1",
+        "border-b",
+        "last-of-type:border-b-0",
+        "group",
+        isSelected && "bg-slate-100"
+      )}
       onClick={() => {
         onSelect(el.id);
       }}
