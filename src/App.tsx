@@ -108,7 +108,14 @@ export function App() {
 
   return (
     <div className="flex m-8">
-      <svg width="900" height="600" className="border-2 border-slate-200">
+      <svg
+        width="900"
+        height="600"
+        className="border-2 border-slate-200"
+        onClick={() => {
+          setSelectedElementId(null);
+        }}
+      >
         {svgElements.toReversed().map((element) => {
           const { type, attr } = element;
           return (
