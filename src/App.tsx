@@ -6,17 +6,20 @@ import {
   useRef,
   useState,
 } from "react";
-import { SvgElement } from "./types";
+import { SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
 
-let idCounter = 2;
+let idCounter = 1;
+
+const CANVAS_WIDTH = 900;
+const CANVAS_HEIGHT = 600;
 
 export function App() {
-  const elementsRef = useRef<Map<SvgElement, SVGGElement> | null>(null);
+  const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
 
-  const [svgElements, setSvgElements] = useState<SvgElement[]>([
+  const [svgItems, setSvgItems] = useState<SvgItem[]>([
     {
       id: 1,
       type: "rect",
@@ -45,12 +48,23 @@ export function App() {
     },
   ]);
 
+  // Initialize viewBox state
+  const [viewBox, setViewBox] = useState({
+    minX: 0,
+    minY: 0,
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+  });
+
+  // Convert viewBox object to string
+  const viewBoxStr = `${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`;
+
   const [selectedElementId, setSelectedElementId] = useState<number | null>(1);
   const [selectionBounds, setSelectionBounds] = useState<DOMRect | null>(null);
 
   const selectedElement = useMemo(
-    () => svgElements.find((el) => el.id === selectedElementId) ?? null,
-    [svgElements, selectedElementId]
+    () => svgItems.find((el) => el.id === selectedElementId) ?? null,
+    [svgItems, selectedElementId]
   );
 
   useLayoutEffect(() => {
@@ -63,16 +77,16 @@ export function App() {
     setSelectionBounds(domNode.getBBox());
   }, [selectedElement]);
 
-  const addElement = (elem: Omit<SvgElement, "id">) => {
-    setSvgElements((elements) => [...elements, { id: idCounter++, ...elem }]);
+  const addElement = (elem: Omit<SvgItem, "id">) => {
+    setSvgItems((elements) => [...elements, { id: idCounter++, ...elem }]);
   };
 
   const removeElement = (id: number) => {
-    setSvgElements((elements) => elements.filter((el) => el.id !== id));
+    setSvgItems((elements) => elements.filter((el) => el.id !== id));
   };
 
   const setAttribute = (id: number, key: string, value: string) => {
-    setSvgElements((elements) =>
+    setSvgItems((elements) =>
       elements.map((el) => {
         if (el.id === id) {
           return {
@@ -86,9 +100,9 @@ export function App() {
   };
 
   const reorderElement = (currentIndex: number, newIndex: number) => {
-    if (newIndex < 0 || newIndex >= svgElements.length) return;
+    if (newIndex < 0 || newIndex >= svgItems.length) return;
 
-    setSvgElements((elements) => {
+    setSvgItems((elements) => {
       const newElements = [...elements];
       [newElements[currentIndex], newElements[newIndex]] = [
         newElements[newIndex],
@@ -106,50 +120,115 @@ export function App() {
     return elementsRef.current;
   }
 
+  // State to track if the mouse is pressed down
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  // State to store the initial mouse position
+  const [initialMousePosition, setInitialMousePosition] = useState({
+    x: 0,
+    y: 0,
+  });
+
+  // Function to handle mouse down event
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    setIsMouseDown(true);
+    setInitialMousePosition({ x: e.clientX, y: e.clientY });
+  };
+
+  // Function to handle mouse move event
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    if (isMouseDown) {
+      const dx = e.clientX - initialMousePosition.x;
+      const dy = e.clientY - initialMousePosition.y;
+
+      // Convert dx and dy to SVG space
+      const svgDx = dx * (viewBox.width / CANVAS_WIDTH);
+      const svgDy = dy * (viewBox.height / CANVAS_HEIGHT);
+
+      handlePan(-svgDx, -svgDy);
+
+      // Update initial position for smooth panning
+      setInitialMousePosition({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  // Function to handle mouse up event
+  const handleMouseUp = () => {
+    setIsMouseDown(false);
+  };
+
+  // Handle zoom
+  const handleZoom = (zoomIn: boolean) => {
+    const scaleFactor = 0.01;
+    const zoomAmount = zoomIn ? 1 - scaleFactor : 1 + scaleFactor;
+    setViewBox((prevViewBox) => ({
+      ...prevViewBox,
+      width: prevViewBox.width * zoomAmount,
+      height: prevViewBox.height * zoomAmount,
+    }));
+  };
+
+  // Handle pan
+  const handlePan = (dx: number, dy: number) => {
+    setViewBox((prevViewBox) => ({
+      ...prevViewBox,
+      minX: prevViewBox.minX + dx,
+      minY: prevViewBox.minY + dy,
+    }));
+  };
+
   return (
     <div className="flex m-8">
-      <svg
-        width="900"
-        height="600"
-        className="border-2 border-slate-200"
-        onClick={() => {
-          setSelectedElementId(null);
-        }}
-      >
-        {svgElements.toReversed().map((element) => {
-          const { type, attr } = element;
-          return (
-            <g
-              id={element.id.toString()}
-              key={element.id}
-              ref={(node) => {
-                const map = getMap();
-                if (node) {
-                  map.set(element, node);
-                } else {
-                  map.delete(element);
-                }
-              }}
-            >
-              <title>{`${type} ${element.id}`}</title>
-              {createElement(type, {
-                onClick: (e) => {
-                  e.stopPropagation();
-                  setSelectedElementId(element.id);
-                },
-                key: element.id,
-                ...attr,
-              })}
-            </g>
-          );
-        })}
-        {selectionBounds && (
-          <SelectionMarker selectionBounds={selectionBounds} />
-        )}
-      </svg>
+      <div>
+        <svg
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="border-2 border-slate-200"
+          viewBox={viewBoxStr}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp} // Handle case where mouse leaves the SVG area
+          onWheel={(e) => handleZoom(e.deltaY < 0)}
+          onClick={() => {
+            setSelectedElementId(null);
+          }}
+        >
+          {svgItems.toReversed().map((element) => {
+            const { type, attr } = element;
+            return (
+              <g
+                id={element.id.toString()}
+                key={element.id}
+                ref={(node) => {
+                  const map = getMap();
+                  if (node) {
+                    map.set(element, node);
+                  } else {
+                    map.delete(element);
+                  }
+                }}
+              >
+                <title>{`${type} ${element.id}`}</title>
+                {createElement(type, {
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    setSelectedElementId(element.id);
+                  },
+                  key: element.id,
+                  ...attr,
+                })}
+              </g>
+            );
+          })}
+          {selectionBounds && (
+            <SelectionMarker selectionBounds={selectionBounds} />
+          )}
+        </svg>
+        zoom: {(viewBox.width / CANVAS_WIDTH).toFixed(2)}
+      </div>
       <div className="ml-2 w-[24rem]">
         <ElementList
-          elements={svgElements}
+          elements={svgItems}
           onRemove={removeElement}
           onReorder={reorderElement}
           onSelect={setSelectedElementId}

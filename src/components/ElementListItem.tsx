@@ -3,13 +3,13 @@ import {
   ArrowDownIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { SvgElement } from "../types";
+import { SvgItem } from "../types";
 import { Button } from "./Button";
 import { ShapeIcon } from "./icons/Shapes";
 import { cx } from "class-variance-authority";
 
 type Elementprops = {
-  element: SvgElement;
+  element: SvgItem;
   index: number;
   isSelected: boolean;
   canMove: { up: boolean; down: boolean };

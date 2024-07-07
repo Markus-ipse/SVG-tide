@@ -1,7 +1,7 @@
-import { SvgElement } from "../types";
+import { SvgItem } from "../types";
 
 interface Props {
-  element: SvgElement | null;
+  element: SvgItem | null;
   onChange: (id: number, key: string, value: string) => void;
 }
 

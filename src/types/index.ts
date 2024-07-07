@@ -10,7 +10,7 @@ export const shapeElements = [
 
 export type SvgShapeElements = (typeof shapeElements)[number];
 
-export type SvgElement = {
+export type SvgItem = {
   id: number;
   type: SvgShapeElements;
   attr: React.SVGProps<SVGElement>;

@@ -3,13 +3,13 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
 } from "@heroicons/react/24/outline";
-import { SvgElement } from "../types";
+import { SvgItem } from "../types";
 import { ShapeIcon } from "./icons/Shapes";
 import { Button } from "./Button";
 import { ElementListItem } from "./ElementListItem";
 
 interface Props {
-  elements: SvgElement[];
+  elements: SvgItem[];
   selectedElementId: number | null;
   className?: string;
   onSelect: (elementId: number) => void;
