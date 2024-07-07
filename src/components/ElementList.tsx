@@ -1,11 +1,4 @@
-import {
-  TrashIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-} from "@heroicons/react/24/outline";
 import { SvgItem } from "../types";
-import { ShapeIcon } from "./icons/Shapes";
-import { Button } from "./Button";
 import { ElementListItem } from "./ElementListItem";
 
 interface Props {
