@@ -10,12 +10,19 @@ import { SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
+import { Button } from "./components/Button";
 
 let idCounter = 1;
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = 600;
 
+const initialViewBox = {
+  minX: 0,
+  minY: 0,
+  width: CANVAS_WIDTH,
+  height: CANVAS_HEIGHT,
+};
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
 
@@ -49,12 +56,7 @@ export function App() {
   ]);
 
   // Initialize viewBox state
-  const [viewBox, setViewBox] = useState({
-    minX: 0,
-    minY: 0,
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-  });
+  const [viewBox, setViewBox] = useState(initialViewBox);
 
   // Convert viewBox object to string
   const viewBoxStr = `${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`;
@@ -224,7 +226,15 @@ export function App() {
             <SelectionMarker selectionBounds={selectionBounds} />
           )}
         </svg>
-        zoom: {(viewBox.width / CANVAS_WIDTH).toFixed(2)}
+        <div className="pt-2">
+          <Button
+            className="border p-1 rounded-md"
+            onClick={() => setViewBox(initialViewBox)}
+          >
+            1:1
+          </Button>{" "}
+          Zoom: {(CANVAS_WIDTH / viewBox.width).toFixed(2)}
+        </div>
       </div>
       <div className="ml-2 w-[24rem]">
         <ElementList
