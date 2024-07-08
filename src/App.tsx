@@ -11,18 +11,11 @@ import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
 import { Button } from "./components/Button";
+import { canvasSize } from "./canvasSize";
+import { usePanAndZoom } from "./hooks/pan-and-zoom";
 
 let idCounter = 1;
 
-const CANVAS_WIDTH = 900;
-const CANVAS_HEIGHT = 600;
-
-const initialViewBox = {
-  minX: 0,
-  minY: 0,
-  width: CANVAS_WIDTH,
-  height: CANVAS_HEIGHT,
-};
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
 
@@ -55,12 +48,6 @@ export function App() {
     },
   ]);
 
-  // Initialize viewBox state
-  const [viewBox, setViewBox] = useState(initialViewBox);
-
-  // Convert viewBox object to string
-  const viewBoxStr = `${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`;
-
   const [selectedElementId, setSelectedElementId] = useState<number | null>(1);
   const [selectionBounds, setSelectionBounds] = useState<DOMRect | null>(null);
 
@@ -68,6 +55,8 @@ export function App() {
     () => svgItems.find((el) => el.id === selectedElementId) ?? null,
     [svgItems, selectedElementId]
   );
+
+  const paz = usePanAndZoom();
 
   useLayoutEffect(() => {
     const domNode = selectedElement && getMap().get(selectedElement);
@@ -122,75 +111,26 @@ export function App() {
     return elementsRef.current;
   }
 
-  // State to track if the mouse is pressed down
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  // State to store the initial mouse position
-  const [initialMousePosition, setInitialMousePosition] = useState({
-    x: 0,
-    y: 0,
-  });
-
-  // Function to handle mouse down event
-  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    setIsMouseDown(true);
-    setInitialMousePosition({ x: e.clientX, y: e.clientY });
-  };
-
-  // Function to handle mouse move event
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (isMouseDown) {
-      const dx = e.clientX - initialMousePosition.x;
-      const dy = e.clientY - initialMousePosition.y;
-
-      // Convert dx and dy to SVG space
-      const svgDx = dx * (viewBox.width / CANVAS_WIDTH);
-      const svgDy = dy * (viewBox.height / CANVAS_HEIGHT);
-
-      handlePan(-svgDx, -svgDy);
-
-      // Update initial position for smooth panning
-      setInitialMousePosition({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  // Function to handle mouse up event
-  const handleMouseUp = () => {
-    setIsMouseDown(false);
-  };
-
-  // Handle zoom
-  const handleZoom = (zoomIn: boolean) => {
-    const scaleFactor = 0.01;
-    const zoomAmount = zoomIn ? 1 - scaleFactor : 1 + scaleFactor;
-    setViewBox((prevViewBox) => ({
-      ...prevViewBox,
-      width: prevViewBox.width * zoomAmount,
-      height: prevViewBox.height * zoomAmount,
-    }));
-  };
-
-  // Handle pan
-  const handlePan = (dx: number, dy: number) => {
-    setViewBox((prevViewBox) => ({
-      ...prevViewBox,
-      minX: prevViewBox.minX + dx,
-      minY: prevViewBox.minY + dy,
-    }));
-  };
+  const viewBoxStr = [
+    paz.viewBox.minX,
+    paz.viewBox.minY,
+    paz.viewBox.width,
+    paz.viewBox.height,
+  ].join(" ");
 
   return (
     <div className="flex m-8">
       <div>
         <svg
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
+          width={canvasSize.width}
+          height={canvasSize.height}
           className="border-2 border-slate-200"
           viewBox={viewBoxStr}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp} // Handle case where mouse leaves the SVG area
-          onWheel={(e) => handleZoom(e.deltaY < 0)}
+          onMouseDown={paz.handleMouseDown}
+          onMouseMove={paz.handleMouseMove}
+          onMouseUp={paz.handleMouseUp}
+          onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
+          onWheel={(e) => paz.handleZoom(e.deltaY < 0)}
           onClick={() => {
             setSelectedElementId(null);
           }}
@@ -227,13 +167,10 @@ export function App() {
           )}
         </svg>
         <div className="pt-2">
-          <Button
-            className="border p-1 rounded-md"
-            onClick={() => setViewBox(initialViewBox)}
-          >
+          <Button className="border p-1 rounded-md" onClick={paz.reset}>
             1:1
           </Button>{" "}
-          Zoom: {(CANVAS_WIDTH / viewBox.width).toFixed(2)}
+          Zoom: {(canvasSize.width / paz.viewBox.width).toFixed(2)}
         </div>
       </div>
       <div className="ml-2 w-[24rem]">
