@@ -156,9 +156,6 @@ export function App() {
           onMouseUp={paz.handleMouseUp}
           onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
           onWheel={(e) => paz.handleZoom(e.deltaY < 0)}
-          onTouchStart={paz.handleTouchStart}
-          onTouchMove={paz.handleTouchMove}
-          onTouchEnd={paz.handleTouchEnd}
           onClick={() => {
             setSelectedElementId(null);
           }}
