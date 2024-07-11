@@ -140,6 +140,8 @@ export function App() {
     paz.viewBox.height,
   ].join(" ");
 
+  const zoomLevel = canvasSize.width / paz.viewBox.width;
+
   return (
     <div className="flex m-8">
       <div>
@@ -189,14 +191,17 @@ export function App() {
             );
           })}
           {selectionBounds && (
-            <SelectionMarker selectionBounds={selectionBounds} />
+            <SelectionMarker
+              selectionBounds={selectionBounds}
+              zoomLevel={zoomLevel}
+            />
           )}
         </svg>
         <div className="pt-2">
           <Button className="border p-1 rounded-md" onClick={paz.reset}>
             1:1
           </Button>{" "}
-          Zoom: {(canvasSize.width / paz.viewBox.width).toFixed(2)}
+          Zoom: {zoomLevel.toFixed(2)}
         </div>
       </div>
       <div className="ml-2 w-[24rem]">
@@ -214,12 +219,18 @@ export function App() {
   );
 }
 
-const SelectionMarker = ({ selectionBounds }: { selectionBounds: DOMRect }) => {
+const SelectionMarker = ({
+  selectionBounds,
+  zoomLevel,
+}: {
+  selectionBounds: DOMRect;
+  zoomLevel: number;
+}) => {
   const [dashOffset, setDashOffset] = useState(9);
 
   useEffect(() => {
     const timerId = setInterval(() => {
-      setDashOffset((prev) => (prev === 0 ? 9 : prev - 1));
+      setDashOffset((prev) => (prev <= 0 ? 9 : prev - 1));
     }, 30);
 
     return () => {
@@ -229,10 +240,10 @@ const SelectionMarker = ({ selectionBounds }: { selectionBounds: DOMRect }) => {
 
   return (
     <rect
-      strokeWidth="2"
+      strokeWidth={2 / zoomLevel}
       stroke="black"
-      strokeDasharray="5"
-      strokeDashoffset={dashOffset}
+      strokeDasharray={5 / zoomLevel}
+      strokeDashoffset={dashOffset / zoomLevel}
       fill="none"
       x={selectionBounds?.x}
       y={selectionBounds?.y}
