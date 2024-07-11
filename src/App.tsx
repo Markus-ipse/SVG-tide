@@ -18,6 +18,7 @@ let idCounter = 1;
 
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
+  const canvasRef = useRef<SVGSVGElement | null>(null);
 
   const [svgItems, setSvgItems] = useState<SvgItem[]>([
     {
@@ -57,6 +58,27 @@ export function App() {
   );
 
   const paz = usePanAndZoom();
+
+  useEffect(() => {
+    const svgElement = canvasRef.current;
+    if (!svgElement) throw new Error("SVG element not found");
+
+    const preventBrowserZoomOnPinch = (event: WheelEvent) => {
+      const { ctrlKey } = event;
+      if (ctrlKey) {
+        event.preventDefault();
+        return;
+      }
+    };
+
+    svgElement.addEventListener("wheel", preventBrowserZoomOnPinch, {
+      passive: false,
+    });
+
+    return () => {
+      svgElement.removeEventListener("wheel", preventBrowserZoomOnPinch);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const domNode = selectedElement && getMap().get(selectedElement);
@@ -122,6 +144,7 @@ export function App() {
     <div className="flex m-8">
       <div>
         <svg
+          ref={canvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
           className="border-2 border-slate-200"
@@ -131,6 +154,9 @@ export function App() {
           onMouseUp={paz.handleMouseUp}
           onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
           onWheel={(e) => paz.handleZoom(e.deltaY < 0)}
+          onTouchStart={paz.handleTouchStart}
+          onTouchMove={paz.handleTouchMove}
+          onTouchEnd={paz.handleTouchEnd}
           onClick={() => {
             setSelectedElementId(null);
           }}
