@@ -1,7 +1,7 @@
 {
   "name": "svg-tide",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "prettier": "prettier --write ./src",
-    "ts-check": "tsc -p tsconfig.app.json --noEmit"
+    "ts-check": "tsc -p tsconfig.app.json --noEmit",
+    "release": "release-it"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.4",
@@ -30,6 +31,7 @@
     "init": "^0.1.2",
     "npx": "^10.2.2",
     "prettier": "^3.3.2",
+    "release-it": "^17.4.1",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.2.2",
     "vite": "^5.3.1"
