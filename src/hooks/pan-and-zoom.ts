@@ -49,16 +49,34 @@ export const usePanAndZoom = () => {
   };
 
   // Handle zoom
-  const handleZoom = (zoomIn: boolean) => {
+  const handleZoom = (zoomIn: boolean, mouseX: number, mouseY: number) => {
     const scaleFactor = 0.01;
     const zoomAmount = zoomIn ? 1 - scaleFactor : 1 + scaleFactor;
-    setViewBox((prevViewBox) => ({
-      ...prevViewBox,
-      width: prevViewBox.width * zoomAmount,
-      height: prevViewBox.height * zoomAmount,
-    }));
-  };
 
+    setViewBox((prevViewBox) => {
+      // Calculate the mouse position relative to the SVG content
+      const svgPointBeforeZoom = {
+        x: (mouseX / canvasSize.width) * prevViewBox.width + prevViewBox.minX,
+        y: (mouseY / canvasSize.height) * prevViewBox.height + prevViewBox.minY,
+      };
+
+      // Calculate the new viewBox size
+      const newWidth = prevViewBox.width * zoomAmount;
+      const newHeight = prevViewBox.height * zoomAmount;
+
+      // Calculate how much the viewBox needs to shift to keep the mouse position fixed
+      const dx = (svgPointBeforeZoom.x - prevViewBox.minX) * (1 - zoomAmount);
+      const dy = (svgPointBeforeZoom.y - prevViewBox.minY) * (1 - zoomAmount);
+
+      return {
+        ...prevViewBox,
+        minX: prevViewBox.minX + dx,
+        minY: prevViewBox.minY + dy,
+        width: newWidth,
+        height: newHeight,
+      };
+    });
+  };
 
   // Handle pan
   const handlePan = (dx: number, dy: number) => {
