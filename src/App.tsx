@@ -13,6 +13,7 @@ import { AttributeEditor } from "./components/AttributeEditor";
 import { Button } from "./components/Button";
 import { canvasSize } from "./canvasSize";
 import { usePanAndZoom } from "./hooks/pan-and-zoom";
+import { useBrowserZoomPrevention } from "./hooks/browser-zoom-prevention";
 
 let idCounter = 1;
 
@@ -59,26 +60,8 @@ export function App() {
 
   const paz = usePanAndZoom();
 
-  useEffect(() => {
-    const svgElement = canvasRef.current;
-    if (!svgElement) throw new Error("SVG element not found");
-
-    const preventBrowserZoomOnPinch = (event: WheelEvent) => {
-      const { ctrlKey } = event;
-      if (ctrlKey) {
-        event.preventDefault();
-        return;
-      }
-    };
-
-    svgElement.addEventListener("wheel", preventBrowserZoomOnPinch, {
-      passive: false,
-    });
-
-    return () => {
-      svgElement.removeEventListener("wheel", preventBrowserZoomOnPinch);
-    };
-  }, []);
+  // Prevent browser zoom when scrolling/pinching on canvas
+  useBrowserZoomPrevention(canvasRef);
 
   useLayoutEffect(() => {
     const domNode = selectedElement && getMap().get(selectedElement);
