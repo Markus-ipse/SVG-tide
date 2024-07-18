@@ -66,12 +66,14 @@ export function App() {
   const isDrawingRef = useRef<false | { startX: number; startY: number }>(
     false
   );
+  const paz = usePanAndZoom();
+  const zoomLevel = canvasSize.width / paz.viewBox.width;
 
   const handleStartDrawing = (e: React.MouseEvent) => {
     if (!drawingMode) return;
 
-    const startX = e.nativeEvent.offsetX;
-    const startY = e.nativeEvent.offsetY;
+    const startX = e.nativeEvent.offsetX / zoomLevel + paz.viewBox.minX;
+    const startY = e.nativeEvent.offsetY / zoomLevel + paz.viewBox.minY;
 
     isDrawingRef.current = { startX, startY };
 
@@ -100,8 +102,8 @@ export function App() {
     if (!drawingMode || svgItems.length === 0 || isDrawingRef.current === false)
       return;
 
-    const newX = e.nativeEvent.offsetX;
-    const newY = e.nativeEvent.offsetY;
+    const newX = e.nativeEvent.offsetX / zoomLevel + paz.viewBox.minX;
+    const newY = e.nativeEvent.offsetY / zoomLevel + paz.viewBox.minY;
 
     const latestSvgItem = svgItems[svgItems.length - 1];
 
@@ -142,8 +144,6 @@ export function App() {
     setDrawingMode(null); // Stop drawing
     console.log("mouse up");
   };
-
-  const paz = usePanAndZoom();
 
   // Prevent browser zoom when scrolling/pinching on canvas
   useBrowserZoomPrevention(canvasRef);
@@ -223,8 +223,6 @@ export function App() {
     paz.viewBox.width,
     paz.viewBox.height,
   ].join(" ");
-
-  const zoomLevel = canvasSize.width / paz.viewBox.width;
 
   return (
     <div className="flex m-8">
