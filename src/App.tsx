@@ -1,4 +1,4 @@
-import {
+import React, {
   createElement,
   useEffect,
   useLayoutEffect,
@@ -14,8 +14,9 @@ import { Button } from "./components/Button";
 import { canvasSize } from "./canvasSize";
 import { usePanAndZoom } from "./hooks/pan-and-zoom";
 import { useBrowserZoomPrevention } from "./hooks/browser-zoom-prevention";
+import { assertOk } from "./utils/assert";
 
-let idCounter = 1;
+let idCounter = 4;
 
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
@@ -58,6 +59,90 @@ export function App() {
     [svgItems, selectedElementId]
   );
 
+  const [drawingMode, setDrawingMode] = useState<"rectangle" | "circle" | null>(
+    null
+  );
+
+  const isDrawingRef = useRef<false | { startX: number; startY: number }>(
+    false
+  );
+
+  const handleStartDrawing = (e: React.MouseEvent) => {
+    if (!drawingMode) return;
+
+    const startX = e.nativeEvent.offsetX;
+    const startY = e.nativeEvent.offsetY;
+
+    isDrawingRef.current = { startX, startY };
+
+    let newElement;
+    switch (drawingMode) {
+      case "rectangle":
+        newElement = addElement({
+          type: "rect",
+          attr: { x: startX, y: startY, width: 0, height: 0 },
+        });
+        break;
+
+      case "circle":
+        newElement = addElement({
+          type: "circle",
+          attr: { cx: startX, cy: startY, r: 0 },
+        });
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  const handleDrawing = (e: React.MouseEvent) => {
+    if (!drawingMode || svgItems.length === 0 || isDrawingRef.current === false)
+      return;
+
+    const newX = e.nativeEvent.offsetX;
+    const newY = e.nativeEvent.offsetY;
+
+    const latestSvgItem = svgItems[svgItems.length - 1];
+
+    if (latestSvgItem.type === "rect") {
+      assertOk(typeof latestSvgItem.attr.x === "number");
+      assertOk(typeof latestSvgItem.attr.y === "number");
+
+      // Calculate new position and size
+      const newWidth = Math.abs(newX - isDrawingRef.current.startX);
+      const newHeight = Math.abs(newY - isDrawingRef.current.startY);
+      const minX = Math.min(newX, isDrawingRef.current.startX);
+      const minY = Math.min(newY, isDrawingRef.current.startY);
+
+      // Update the rectangle's attributes
+      setAttributes(latestSvgItem.id, {
+        x: minX,
+        y: minY,
+        width: newWidth,
+        height: newHeight,
+      });
+    } else if (latestSvgItem.type === "circle") {
+      assertOk(typeof latestSvgItem.attr.cx === "number");
+      assertOk(typeof latestSvgItem.attr.cy === "number");
+
+      // Calculate new radius
+      const newRadius = Math.sqrt(
+        Math.pow(newX - latestSvgItem.attr.cx, 2) +
+          Math.pow(newY - latestSvgItem.attr.cy, 2)
+      );
+
+      // Update the circle's attributes
+      setAttributes(latestSvgItem.id, { r: newRadius });
+    }
+  };
+
+  const stopDrawing = () => {
+    isDrawingRef.current = false;
+    setDrawingMode(null); // Stop drawing
+    console.log("mouse up");
+  };
+
   const paz = usePanAndZoom();
 
   // Prevent browser zoom when scrolling/pinching on canvas
@@ -74,7 +159,9 @@ export function App() {
   }, [selectedElement]);
 
   const addElement = (elem: Omit<SvgItem, "id">) => {
-    setSvgItems((elements) => [...elements, { id: idCounter++, ...elem }]);
+    const addedItem = { id: idCounter++, ...elem };
+    setSvgItems((elements) => [...elements, addedItem]);
+    return addedItem;
   };
 
   const removeElement = (id: number) => {
@@ -88,6 +175,20 @@ export function App() {
           return {
             ...el,
             attr: { ...el.attr, [key]: value },
+          };
+        }
+        return el;
+      })
+    );
+  };
+
+  const setAttributes = (id: number, newAttr: SvgItem["attr"]) => {
+    setSvgItems((elements) =>
+      elements.map((el) => {
+        if (el.id === id) {
+          return {
+            ...el,
+            attr: { ...el.attr, ...newAttr },
           };
         }
         return el;
@@ -128,15 +229,36 @@ export function App() {
   return (
     <div className="flex m-8">
       <div>
+        <h4 className="text-l font-semibold">Shapes</h4>
+        <div className="flex flex-wrap">
+          <Button
+            className="border p-1 rounded-md m-1"
+            onClick={() => setDrawingMode("rectangle")}
+          >
+            Rectangle
+          </Button>
+          <Button
+            className="border p-1 rounded-md m-1"
+            onClick={() => setDrawingMode("circle")}
+          >
+            Circle
+          </Button>
+        </div>
+      </div>
+      <div>
         <svg
           ref={canvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
           className="border-2 border-slate-200"
           viewBox={viewBoxStr}
-          onMouseDown={paz.handleMouseDown}
-          onMouseMove={paz.handleMouseMove}
-          onMouseUp={paz.handleMouseUp}
+          onMouseDown={(e) =>
+            drawingMode ? handleStartDrawing(e) : paz.handleMouseDown(e)
+          }
+          onMouseMove={(e) =>
+            drawingMode ? handleDrawing(e) : paz.handleMouseMove(e)
+          }
+          onMouseUp={() => (drawingMode ? stopDrawing() : paz.handleMouseUp())}
           onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
           onWheel={(e) =>
             paz.handleZoom(
