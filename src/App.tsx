@@ -231,12 +231,14 @@ export function App() {
         <div className="flex flex-wrap">
           <Button
             className="border p-1 rounded-md m-1"
+            toggled={drawingMode === "rectangle"}
             onClick={() => setDrawingMode("rectangle")}
           >
             Rectangle
           </Button>
           <Button
             className="border p-1 rounded-md m-1"
+            toggled={drawingMode === "circle"}
             onClick={() => setDrawingMode("circle")}
           >
             Circle
