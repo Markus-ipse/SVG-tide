@@ -52,7 +52,7 @@ export const usePanAndZoom = () => {
 
   // Handle zoom
   const handleZoom = (zoomIn: boolean, mouseX: number, mouseY: number) => {
-    const scaleFactor = 0.01;
+    const scaleFactor = 0.1;
     const zoomAmount = zoomIn ? 1 - scaleFactor : 1 + scaleFactor;
 
     setViewBox((prevViewBox) => {
