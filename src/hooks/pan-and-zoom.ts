@@ -22,6 +22,8 @@ export const usePanAndZoom = () => {
 
   // Handle mouse down event
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    if (e.button !== 1) return; // Only handle middle mouse button
+
     setIsMouseDown(true);
     setInitialMousePosition({ x: e.clientX, y: e.clientY });
   };

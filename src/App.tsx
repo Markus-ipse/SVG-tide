@@ -13,7 +13,7 @@ import { AttributeEditor } from "./components/AttributeEditor";
 import { Button } from "./components/Button";
 import { canvasSize } from "./canvasSize";
 import { usePanAndZoom } from "./hooks/pan-and-zoom";
-import { useBrowserZoomPrevention } from "./hooks/browser-zoom-prevention";
+import { useWheelEventOverrides } from "./hooks/browser-zoom-prevention";
 import { assertOk } from "./utils/assert";
 
 let idCounter = 4;
@@ -146,7 +146,7 @@ export function App() {
   };
 
   // Prevent browser zoom when scrolling/pinching on canvas
-  useBrowserZoomPrevention(canvasRef);
+  useWheelEventOverrides(canvasRef);
 
   useLayoutEffect(() => {
     const domNode = selectedElement && getMap().get(selectedElement);
