@@ -247,6 +247,7 @@ export function App() {
       </div>
       <div>
         <svg
+          style={{ backgroundColor: "#EEE" }}
           ref={canvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
@@ -271,6 +272,15 @@ export function App() {
             setSelectedElementId(null);
           }}
         >
+          <rect
+            id="canvas-bg"
+            x={0}
+            y={0}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            fill="#FFF"
+          />
+
           {svgItems.toReversed().map((element) => {
             const { type, attr } = element;
             return (
@@ -306,10 +316,13 @@ export function App() {
           )}
         </svg>
         <div className="pt-2">
-          <Button className="border p-1 rounded-md" onClick={paz.reset}>
-            1:1
-          </Button>{" "}
-          Zoom: {zoomLevel.toFixed(2)}
+          <span className="font-semibold mr-1">Zoom:</span>
+          {Math.round(zoomLevel * 100)}%
+          <span className="font-semibold ml-4 mr-1">X/Y offset:</span>
+          {Math.round(paz.viewBox.minX)}, {Math.round(paz.viewBox.minY)}
+          <Button className="border p-1 rounded-md ml-6" onClick={paz.reset}>
+            Reset pan & zoom
+          </Button>
         </div>
       </div>
       <div className="ml-2 w-[24rem]">
