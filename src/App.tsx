@@ -14,7 +14,7 @@ import { Button } from "./components/Button";
 import { canvasSize } from "./canvasSize";
 import { usePanAndZoom } from "./hooks/pan-and-zoom";
 import { useWheelEventOverrides } from "./hooks/browser-zoom-prevention";
-import { assertOk } from "./utils/assert";
+import { assertNever, assertOk } from "./utils/assert";
 
 let idCounter = 4;
 
@@ -59,90 +59,157 @@ export function App() {
     [svgItems, selectedElementId]
   );
 
-  const [drawingMode, setDrawingMode] = useState<"rectangle" | "circle" | null>(
-    null
-  );
+  const [activeTool, setActiveTool] = useState<
+    "rectangle" | "circle" | "grab" | null
+  >(null);
 
-  const isDrawingRef = useRef<false | { startX: number; startY: number }>(
-    false
-  );
+  const isDraggingRef = useRef<
+    | false
+    | {
+        startX: number;
+        startY: number;
+        svgItem: { startX: number; startY: number } | null;
+      }
+  >(false);
   const paz = usePanAndZoom();
-  const zoomLevel = canvasSize.width / paz.viewBox.width;
+
+  const startDragInteraction = (e: React.MouseEvent, svgItem?: SvgItem) => {
+    const startX = e.nativeEvent.offsetX / paz.zoomLevel + paz.viewBox.minX;
+    const startY = e.nativeEvent.offsetY / paz.zoomLevel + paz.viewBox.minY;
+
+    let itemPos: { startX: number; startY: number } | null = null;
+
+    if (svgItem?.type === "rect") {
+      itemPos = { startX: +svgItem.attr.x!, startY: +svgItem.attr.y! };
+    } else if (svgItem?.type === "circle") {
+      itemPos = { startX: +svgItem.attr.cx!, startY: +svgItem.attr.cy! };
+    }
+
+    isDraggingRef.current = {
+      startX,
+      startY,
+      svgItem: itemPos,
+    };
+
+    return isDraggingRef.current;
+  };
 
   const handleStartDrawing = (e: React.MouseEvent) => {
-    if (!drawingMode) return;
+    if (!activeTool) return;
 
-    const startX = e.nativeEvent.offsetX / zoomLevel + paz.viewBox.minX;
-    const startY = e.nativeEvent.offsetY / zoomLevel + paz.viewBox.minY;
-
-    isDrawingRef.current = { startX, startY };
+    startDragInteraction(e);
+    assertOk(isDraggingRef.current);
 
     let newElement;
-    switch (drawingMode) {
+    switch (activeTool) {
       case "rectangle":
         newElement = addElement({
           type: "rect",
-          attr: { x: startX, y: startY, width: 0, height: 0 },
+          attr: {
+            x: isDraggingRef.current.startX,
+            y: isDraggingRef.current.startY,
+            width: 0,
+            height: 0,
+          },
         });
         break;
 
       case "circle":
         newElement = addElement({
           type: "circle",
-          attr: { cx: startX, cy: startY, r: 0 },
+          attr: {
+            cx: isDraggingRef.current.startX,
+            cy: isDraggingRef.current.startY,
+            r: 0,
+          },
         });
         break;
-
-      default:
+      case "grab":
         break;
+      default:
+        assertNever(activeTool);
     }
   };
 
   const handleDrawing = (e: React.MouseEvent) => {
-    if (!drawingMode || svgItems.length === 0 || isDrawingRef.current === false)
+    if (!activeTool || svgItems.length === 0 || isDraggingRef.current === false)
       return;
 
-    const newX = e.nativeEvent.offsetX / zoomLevel + paz.viewBox.minX;
-    const newY = e.nativeEvent.offsetY / zoomLevel + paz.viewBox.minY;
+    const newX = e.nativeEvent.offsetX / paz.zoomLevel + paz.viewBox.minX;
+    const newY = e.nativeEvent.offsetY / paz.zoomLevel + paz.viewBox.minY;
+
+    const deltaX = newX - isDraggingRef.current.startX;
+    const deltaY = newY - isDraggingRef.current.startY;
 
     const latestSvgItem = svgItems[svgItems.length - 1];
 
-    if (latestSvgItem.type === "rect") {
-      assertOk(typeof latestSvgItem.attr.x === "number");
-      assertOk(typeof latestSvgItem.attr.y === "number");
+    switch (activeTool) {
+      case "rectangle": {
+        assertOk(isDraggingRef.current);
+        assertOk(latestSvgItem.type === "rect");
+        assertOk(typeof latestSvgItem.attr.x === "number");
+        assertOk(typeof latestSvgItem.attr.y === "number");
 
-      // Calculate new position and size
-      const newWidth = Math.abs(newX - isDrawingRef.current.startX);
-      const newHeight = Math.abs(newY - isDrawingRef.current.startY);
-      const minX = Math.min(newX, isDrawingRef.current.startX);
-      const minY = Math.min(newY, isDrawingRef.current.startY);
+        // Calculate new position and size
+        const newWidth = Math.abs(deltaX);
+        const newHeight = Math.abs(deltaY);
+        const minX = Math.min(newX, isDraggingRef.current.startX);
+        const minY = Math.min(newY, isDraggingRef.current.startY);
 
-      // Update the rectangle's attributes
-      setAttributes(latestSvgItem.id, {
-        x: minX,
-        y: minY,
-        width: newWidth,
-        height: newHeight,
-      });
-    } else if (latestSvgItem.type === "circle") {
-      assertOk(typeof latestSvgItem.attr.cx === "number");
-      assertOk(typeof latestSvgItem.attr.cy === "number");
+        // Update the rectangle's attributes
+        setAttributes(latestSvgItem.id, {
+          x: minX,
+          y: minY,
+          width: newWidth,
+          height: newHeight,
+        });
 
-      // Calculate new radius
-      const newRadius = Math.sqrt(
-        Math.pow(newX - latestSvgItem.attr.cx, 2) +
-          Math.pow(newY - latestSvgItem.attr.cy, 2)
-      );
+        break;
+      }
 
-      // Update the circle's attributes
-      setAttributes(latestSvgItem.id, { r: newRadius });
+      case "circle": {
+        assertOk(isDraggingRef.current);
+
+        assertOk(typeof latestSvgItem.attr.cx === "number");
+        assertOk(typeof latestSvgItem.attr.cy === "number");
+
+        // Calculate new radius
+        const newRadius = Math.sqrt(
+          Math.pow(newX - latestSvgItem.attr.cx, 2) +
+            Math.pow(newY - latestSvgItem.attr.cy, 2)
+        );
+
+        // Update the circle's attributes
+        setAttributes(latestSvgItem.id, { r: newRadius });
+
+        break;
+      }
+
+      case "grab": {
+        if (selectedElement) {
+          if (selectedElement.type == "rect") {
+            setAttributes(selectedElement.id, {
+              x: isDraggingRef.current.svgItem!.startX + deltaX,
+              y: isDraggingRef.current.svgItem!.startY + deltaY,
+            });
+          } else if (selectedElement.type == "circle") {
+            setAttributes(selectedElement.id, {
+              cx: isDraggingRef.current.svgItem!.startX + deltaX,
+              cy: isDraggingRef.current.svgItem!.startY + deltaY,
+            });
+          }
+        }
+        break;
+      }
+
+      default:
+        assertNever(activeTool);
     }
   };
 
   const stopDrawing = () => {
-    isDrawingRef.current = false;
-    setDrawingMode(null); // Stop drawing
-    console.log("mouse up");
+    isDraggingRef.current = false;
+    setActiveTool(null); // Stop drawing
   };
 
   // Prevent browser zoom when scrolling/pinching on canvas
@@ -253,15 +320,15 @@ export function App() {
           <div className="flex flex-wrap">
             <Button
               className="border p-1 rounded-md m-1"
-              toggled={drawingMode === "rectangle"}
-              onClick={() => setDrawingMode("rectangle")}
+              toggled={activeTool === "rectangle"}
+              onClick={() => setActiveTool("rectangle")}
             >
               Rectangle
             </Button>
             <Button
               className="border p-1 rounded-md m-1"
-              toggled={drawingMode === "circle"}
-              onClick={() => setDrawingMode("circle")}
+              toggled={activeTool === "circle"}
+              onClick={() => setActiveTool("circle")}
             >
               Circle
             </Button>
@@ -269,21 +336,19 @@ export function App() {
         </div>
         <div>
           <svg
-            style={{ backgroundColor: "#EEE" }}
+            style={{ backgroundColor: "#EEE", touchAction: "none" }}
             ref={canvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
             className="border-2 border-slate-200"
             viewBox={viewBoxStr}
             onMouseDown={(e) =>
-              drawingMode ? handleStartDrawing(e) : paz.handleMouseDown(e)
+              activeTool ? handleStartDrawing(e) : paz.handleMouseDown(e)
             }
             onMouseMove={(e) =>
-              drawingMode ? handleDrawing(e) : paz.handleMouseMove(e)
+              activeTool ? handleDrawing(e) : paz.handleMouseMove(e)
             }
-            onMouseUp={() =>
-              drawingMode ? stopDrawing() : paz.handleMouseUp()
-            }
+            onMouseUp={() => (activeTool ? stopDrawing() : paz.handleMouseUp())}
             onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
             onWheel={(e) =>
               paz.handleZoom(
@@ -323,8 +388,15 @@ export function App() {
                   <title>{`${type} ${element.id}`}</title>
                   {createElement(type, {
                     onClick: (e) => {
-                      e.stopPropagation();
+                      e.stopPropagation(); // Prevent canvas click event from firing (deselecting)
                       setSelectedElementId(element.id);
+                    },
+                    onMouseDown: (e) => {
+                      startDragInteraction(e, element);
+                      setActiveTool("grab");
+                    },
+                    onMouseUp: (e) => {
+                      setActiveTool(null);
                     },
                     key: element.id,
                     ...attr,
@@ -335,13 +407,13 @@ export function App() {
             {selectionBounds && (
               <SelectionMarker
                 selectionBounds={selectionBounds}
-                zoomLevel={zoomLevel}
+                zoomLevel={paz.zoomLevel}
               />
             )}
           </svg>
           <div className="pt-2">
             <span className="font-semibold mr-1">Zoom:</span>
-            {Math.round(zoomLevel * 100)}%
+            {Math.round(paz.zoomLevel * 100)}%
             <span className="font-semibold ml-4 mr-1">X/Y offset:</span>
             {Math.round(paz.viewBox.minX)}, {Math.round(paz.viewBox.minY)}
             <Button className="border p-1 rounded-md ml-6" onClick={paz.reset}>

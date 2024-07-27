@@ -92,8 +92,11 @@ export const usePanAndZoom = () => {
   // reset pan and zoom
   const reset = () => setViewBox(initialViewBox);
 
+  const zoomLevel = canvasSize.width / viewBox.width;
+
   return {
     viewBox,
+    zoomLevel,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
