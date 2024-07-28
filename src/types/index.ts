@@ -12,6 +12,13 @@ export type SvgShapeElements = (typeof shapeElements)[number];
 
 export type SvgItem = Rect | Circle | Polygon;
 
+export type Shared = {
+  stroke: string;
+  strokeWidth: number;
+  fill: string;
+  fillOpacity: number;
+};
+
 export type Rect = {
   id: number;
   type: "rect";
@@ -20,10 +27,7 @@ export type Rect = {
     y: number;
     width: number;
     height: number;
-    fill?: string;
-    stroke?: string;
-    strokeWidth?: number;
-  };
+  } & Shared;
 };
 
 export type Circle = {
@@ -33,10 +37,7 @@ export type Circle = {
     cx: number;
     cy: number;
     r: number;
-    fill?: string;
-    stroke?: string;
-    strokeWidth?: number;
-  };
+  } & Shared;
 };
 
 export type Polygon = {
@@ -44,17 +45,10 @@ export type Polygon = {
   type: "polygon";
   attr: {
     points: Coord[];
-    fill?: string;
-    stroke?: string;
-    strokeWidth?: number;
-  };
+  } & Shared;
 };
 
 export type Coord = {
   x: number;
   y: number;
-};
-
-export type MappedOmit<T, K extends keyof T> = {
-  [P in keyof T as P extends K ? never : P]: T[P];
 };

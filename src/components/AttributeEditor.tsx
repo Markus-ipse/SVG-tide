@@ -24,36 +24,55 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
       </h4>
       <div className="p-2 pb-1 border-2 border-slate-200 ">
         {!svgItem && <div className="text-slate-500">No element selected</div>}
-        {svgItem &&
-          Object.entries(svgItem.attr).map(([key, value]) => {
-            return (
-              <div
-                key={key}
-                className="flex items-center p-1 border-b last-of-type:border-0"
-              >
-                <span className="font-semibold">{key}</span>
-                {colorAttributes.includes(key) ? (
-                  <input
-                    type="color"
-                    className="ml-auto w-20 p-1"
-                    value={value.toString()}
-                    onChange={(e) =>
-                      onChange(svgItem, { [key]: e.target.value })
-                    }
-                  />
-                ) : (
-                  <input
-                    type={"text"}
-                    className="ml-auto w-20 border-2 border-slate-200 p-1"
-                    value={value.toString()}
-                    onChange={(e) =>
-                      onChange(svgItem, { [key]: e.target.value })
-                    }
-                  />
-                )}
-              </div>
-            );
-          })}
+        {svgItem && (
+          <>
+            <div className="flex items-center p-1 border-b last-of-type:border-0">
+              <span className="font-semibold">Fill</span>
+              <input
+                type="color"
+                className="ml-auto w-20 p-1"
+                value={svgItem.attr.fill || "#000000"}
+                onChange={(e) => onChange(svgItem, { fill: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center p-1 border-b last-of-type:border-0">
+              <span className="font-semibold">Fill opacity</span>
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                className="ml-auto w-20 border-2 border-slate-200 p-1"
+                value={svgItem.attr.fillOpacity || "#000000"}
+                onChange={(e) =>
+                  onChange(svgItem, { fillOpacity: parseFloat(e.target.value) })
+                }
+              />
+            </div>
+            <div className="flex items-center p-1 border-b last-of-type:border-0">
+              <span className="font-semibold">Stroke width</span>
+              <input
+                type="number"
+                min={0}
+                className="ml-auto w-20 border-2 border-slate-200 p-1"
+                value={svgItem.attr.strokeWidth}
+                onChange={(e) =>
+                  onChange(svgItem, {
+                    strokeWidth: parseFloat(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div className="flex items-center p-1 border-b last-of-type:border-0">
+              <span className="font-semibold">Stroke color</span>
+              <input
+                type="color"
+                className="ml-auto w-20 p-1"
+                value={svgItem.attr.stroke}
+                onChange={(e) => onChange(svgItem, { stroke: e.target.value })}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

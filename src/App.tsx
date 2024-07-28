@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { Coord, MappedOmit, SvgItem } from "./types";
+import type { Coord, SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
@@ -16,8 +16,8 @@ import { usePanAndZoom } from "./hooks/pan-and-zoom";
 import { useWheelEventOverrides } from "./hooks/browser-zoom-prevention";
 import { assertNever, assertOk } from "./utils/assert";
 import { produce } from "immer";
-
-let idCounter = 4;
+import { MappedOmit } from "./types/type-utils";
+import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
@@ -29,36 +29,27 @@ export function App() {
   const canvasRef = useRef<SVGSVGElement | null>(null);
 
   const [svgItems, setSvgItems] = useState<SvgItem[]>([
-    {
-      id: 1,
-      type: "rect",
-      attr: {
-        x: 50,
-        y: 50,
-        width: 200,
-        height: 100,
-        fill: "#BBC42A",
-      },
-    },
-    {
-      id: 2,
-      type: "circle",
-      attr: { cx: 150, cy: 150, r: 50, fill: "#FF0000" },
-    },
-    {
-      id: 3,
-      type: "polygon",
-      attr: {
-        points: [
-          { x: 100, y: 10 },
-          { x: 150, y: 190 },
-          { x: 50, y: 190 },
-        ],
-        fill: "#00dd00",
-        stroke: "#800080",
-        strokeWidth: 2,
-      },
-    },
+    createRect({
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 100,
+      fill: "#BBC42A",
+      fillOpacity: 1,
+    }),
+    createCircle({ cx: 150, cy: 150, r: 50, fill: "#FF0000", fillOpacity: 1 }),
+
+    createPolygon({
+      points: [
+        { x: 100, y: 10 },
+        { x: 150, y: 190 },
+        { x: 50, y: 190 },
+      ],
+      fill: "#00dd00",
+      fillOpacity: 1,
+      stroke: "#800080",
+      strokeWidth: 2,
+    }),
   ]);
 
   const [selectedElementId, setSelectedElementId] = useState<number | null>(1);
@@ -124,29 +115,27 @@ export function App() {
     startDragInteraction(e);
     assertOk(isDraggingRef.current);
 
-    let newElement;
     switch (activeTool) {
       case "rectangle":
-        newElement = addElement({
-          type: "rect",
-          attr: {
+        addElement(
+          createRect({
             x: isDraggingRef.current.startX,
             y: isDraggingRef.current.startY,
             width: 0,
             height: 0,
-          },
-        });
+          })
+        );
+
         break;
 
       case "circle":
-        newElement = addElement({
-          type: "circle",
-          attr: {
+        addElement(
+          createCircle({
             cx: isDraggingRef.current.startX,
             cy: isDraggingRef.current.startY,
             r: 0,
-          },
-        });
+          })
+        );
         break;
       case "grab":
         break;
@@ -256,11 +245,9 @@ export function App() {
     setSelectionBounds(domNode.getBBox());
   }, [selectedElement]);
 
-  const addElement = (elem: MappedOmit<SvgItem, "id">) => {
-    const addedItem = { id: idCounter++, ...elem };
-
-    setSvgItems((elements) => [...elements, addedItem]);
-    return addedItem;
+  const addElement = (elem: SvgItem) => {
+    setSvgItems((elements) => [...elements, elem]);
+    return elem;
   };
 
   const removeElement = (id: number) => {
@@ -417,6 +404,7 @@ export function App() {
                     },
                     onMouseDown: (e) => {
                       if (e.button !== 0) return; // Only handle left mouse button
+                      if (activeTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
                       setSelectedElementId(element.id);
                       startDragInteraction(e, element);
                       setActiveTool("grab");
