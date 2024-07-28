@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { SvgItem } from "./types";
+import type { MappedOmit, Polygon, Rect, SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
@@ -15,6 +15,7 @@ import { canvasSize } from "./canvasSize";
 import { usePanAndZoom } from "./hooks/pan-and-zoom";
 import { useWheelEventOverrides } from "./hooks/browser-zoom-prevention";
 import { assertNever, assertOk } from "./utils/assert";
+import { produce } from "immer";
 
 let idCounter = 4;
 
@@ -22,7 +23,7 @@ export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
 
-  const [svgItems, setSvgItems] = useState<SvgItem[]>([
+  const [svgItems, setSvgItems] = useState<(SvgItem | Polygon)[]>([
     {
       id: 1,
       type: "rect",
@@ -43,7 +44,11 @@ export function App() {
       id: 3,
       type: "polygon",
       attr: {
-        points: "100,10 150,190 50,190",
+        points: [
+          { x: 100, y: 10 },
+          { x: 150, y: 190 },
+          { x: 50, y: 190 },
+        ],
         fill: "#00dd00",
         stroke: "#800080",
         strokeWidth: 2,
@@ -157,7 +162,7 @@ export function App() {
         const minY = Math.min(newY, isDraggingRef.current.startY);
 
         // Update the rectangle's attributes
-        setAttributes(latestSvgItem.id, {
+        setAttributes(latestSvgItem, {
           x: minX,
           y: minY,
           width: newWidth,
@@ -170,8 +175,7 @@ export function App() {
       case "circle": {
         assertOk(isDraggingRef.current);
 
-        assertOk(typeof latestSvgItem.attr.cx === "number");
-        assertOk(typeof latestSvgItem.attr.cy === "number");
+        assertOk(latestSvgItem.type === "circle");
 
         // Calculate new radius
         const newRadius = Math.sqrt(
@@ -180,7 +184,7 @@ export function App() {
         );
 
         // Update the circle's attributes
-        setAttributes(latestSvgItem.id, { r: newRadius });
+        setAttributes(latestSvgItem, { r: newRadius });
 
         break;
       }
@@ -188,12 +192,12 @@ export function App() {
       case "grab": {
         if (selectedElement) {
           if (selectedElement.type == "rect") {
-            setAttributes(selectedElement.id, {
+            setAttributes(selectedElement, {
               x: isDraggingRef.current.svgItem!.startX + deltaX,
               y: isDraggingRef.current.svgItem!.startY + deltaY,
             });
           } else if (selectedElement.type == "circle") {
-            setAttributes(selectedElement.id, {
+            setAttributes(selectedElement, {
               cx: isDraggingRef.current.svgItem!.startX + deltaX,
               cy: isDraggingRef.current.svgItem!.startY + deltaY,
             });
@@ -225,8 +229,9 @@ export function App() {
     setSelectionBounds(domNode.getBBox());
   }, [selectedElement]);
 
-  const addElement = (elem: Omit<SvgItem, "id">) => {
+  const addElement = (elem: MappedOmit<SvgItem, "id">) => {
     const addedItem = { id: idCounter++, ...elem };
+
     setSvgItems((elements) => [...elements, addedItem]);
     return addedItem;
   };
@@ -235,29 +240,21 @@ export function App() {
     setSvgItems((elements) => elements.filter((el) => el.id !== id));
   };
 
-  const setAttribute = (id: number, key: string, value: string) => {
+  const setAttributes = <
+    T extends SvgItem["type"],
+    U extends Extract<SvgItem, { type: T }>,
+  >(
+    svgItem: { id: number; type: T },
+    newAttr: Partial<U["attr"]>
+  ) => {
     setSvgItems((elements) =>
       elements.map((el) => {
-        if (el.id === id) {
-          return {
-            ...el,
-            attr: { ...el.attr, [key]: value },
-          };
+        if (el.id === svgItem.id) {
+          return produce(el, (draft) => {
+            draft.attr = { ...draft.attr, ...newAttr };
+          });
         }
-        return el;
-      })
-    );
-  };
 
-  const setAttributes = (id: number, newAttr: SvgItem["attr"]) => {
-    setSvgItems((elements) =>
-      elements.map((el) => {
-        if (el.id === id) {
-          return {
-            ...el,
-            attr: { ...el.attr, ...newAttr },
-          };
-        }
         return el;
       })
     );
@@ -371,7 +368,8 @@ export function App() {
             />
 
             {svgItems.toReversed().map((element) => {
-              const { type, attr } = element;
+              const { type } = element;
+
               return (
                 <g
                   id={element.id.toString()}
@@ -392,14 +390,16 @@ export function App() {
                       setSelectedElementId(element.id);
                     },
                     onMouseDown: (e) => {
+                      if (e.button !== 0) return; // Only handle left mouse button
                       startDragInteraction(e, element);
                       setActiveTool("grab");
                     },
                     onMouseUp: (e) => {
+                      if (e.button !== 0) return; // Only handle left mouse button
                       setActiveTool(null);
                     },
                     key: element.id,
-                    ...attr,
+                    ...toSvgElementAttr(element),
                   })}
                 </g>
               );
@@ -430,12 +430,30 @@ export function App() {
             className="mb-2"
             selectedElementId={selectedElementId}
           />
-          <AttributeEditor element={selectedElement} onChange={setAttribute} />
+          <AttributeEditor svgItem={selectedElement} onChange={setAttributes} />
         </div>
       </div>
     </div>
   );
 }
+
+const toSvgElementAttr = (item: SvgItem): React.SVGProps<SVGElement> => {
+  switch (item.type) {
+    case "rect":
+      return item.attr;
+    case "circle":
+      return item.attr;
+    case "polygon": {
+      const { points, ...rest } = item.attr;
+      return {
+        ...rest,
+        points: points.map((p) => `${p.x},${p.y}`).join(" "),
+      };
+    }
+    default:
+      assertNever(item);
+  }
+};
 
 const SelectionMarker = ({
   selectionBounds,
