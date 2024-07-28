@@ -43,14 +43,14 @@ export type Polygon = {
   id: number;
   type: "polygon";
   attr: {
-    points: Point[];
+    points: Coord[];
     fill?: string;
     stroke?: string;
     strokeWidth?: number;
   };
 };
 
-type Point = {
+export type Coord = {
   x: number;
   y: number;
 };

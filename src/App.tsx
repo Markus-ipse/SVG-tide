@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { MappedOmit, Polygon, Rect, SvgItem } from "./types";
+import type { Coord, MappedOmit, SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
@@ -19,11 +19,16 @@ import { produce } from "immer";
 
 let idCounter = 4;
 
+type DraggedItem =
+  | ({ type: "rect" } & Coord)
+  | ({ type: "circle" } & Coord)
+  | { type: "polygon"; points: Coord[] };
+
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
 
-  const [svgItems, setSvgItems] = useState<(SvgItem | Polygon)[]>([
+  const [svgItems, setSvgItems] = useState<SvgItem[]>([
     {
       id: 1,
       type: "rect",
@@ -73,27 +78,41 @@ export function App() {
     | {
         startX: number;
         startY: number;
-        svgItem: { startX: number; startY: number } | null;
+        draggedItem: DraggedItem | null;
       }
   >(false);
+
   const paz = usePanAndZoom();
 
   const startDragInteraction = (e: React.MouseEvent, svgItem?: SvgItem) => {
     const startX = e.nativeEvent.offsetX / paz.zoomLevel + paz.viewBox.minX;
     const startY = e.nativeEvent.offsetY / paz.zoomLevel + paz.viewBox.minY;
 
-    let itemPos: { startX: number; startY: number } | null = null;
+    let itemPos: DraggedItem | null = null;
 
     if (svgItem?.type === "rect") {
-      itemPos = { startX: +svgItem.attr.x!, startY: +svgItem.attr.y! };
+      itemPos = {
+        type: svgItem.type,
+        x: +svgItem.attr.x,
+        y: +svgItem.attr.y,
+      };
     } else if (svgItem?.type === "circle") {
-      itemPos = { startX: +svgItem.attr.cx!, startY: +svgItem.attr.cy! };
+      itemPos = {
+        type: svgItem.type,
+        x: +svgItem.attr.cx,
+        y: +svgItem.attr.cy,
+      };
+    } else if (svgItem?.type === "polygon") {
+      itemPos = {
+        type: svgItem.type,
+        points: svgItem.attr.points.map((p) => ({ x: p.x, y: p.y })),
+      };
     }
 
     isDraggingRef.current = {
       startX,
       startY,
-      svgItem: itemPos,
+      draggedItem: itemPos,
     };
 
     return isDraggingRef.current;
@@ -152,8 +171,6 @@ export function App() {
       case "rectangle": {
         assertOk(isDraggingRef.current);
         assertOk(latestSvgItem.type === "rect");
-        assertOk(typeof latestSvgItem.attr.x === "number");
-        assertOk(typeof latestSvgItem.attr.y === "number");
 
         // Calculate new position and size
         const newWidth = Math.abs(deltaX);
@@ -174,7 +191,6 @@ export function App() {
 
       case "circle": {
         assertOk(isDraggingRef.current);
-
         assertOk(latestSvgItem.type === "circle");
 
         // Calculate new radius
@@ -191,15 +207,26 @@ export function App() {
 
       case "grab": {
         if (selectedElement) {
-          if (selectedElement.type == "rect") {
+          const preDragPos = isDraggingRef.current.draggedItem;
+          assertOk(preDragPos);
+          assertOk(selectedElement.type === preDragPos.type);
+
+          if (preDragPos.type == "rect") {
             setAttributes(selectedElement, {
-              x: isDraggingRef.current.svgItem!.startX + deltaX,
-              y: isDraggingRef.current.svgItem!.startY + deltaY,
+              x: preDragPos.x + deltaX,
+              y: preDragPos.y + deltaY,
             });
-          } else if (selectedElement.type == "circle") {
+          } else if (preDragPos.type == "circle") {
             setAttributes(selectedElement, {
-              cx: isDraggingRef.current.svgItem!.startX + deltaX,
-              cy: isDraggingRef.current.svgItem!.startY + deltaY,
+              cx: preDragPos.x + deltaX,
+              cy: preDragPos.y + deltaY,
+            });
+          } else if (preDragPos.type == "polygon") {
+            setAttributes(selectedElement, {
+              points: preDragPos.points.map((p) => ({
+                x: p.x + deltaX,
+                y: p.y + deltaY,
+              })),
             });
           }
         }
@@ -387,10 +414,10 @@ export function App() {
                   {createElement(type, {
                     onClick: (e) => {
                       e.stopPropagation(); // Prevent canvas click event from firing (deselecting)
-                      setSelectedElementId(element.id);
                     },
                     onMouseDown: (e) => {
                       if (e.button !== 0) return; // Only handle left mouse button
+                      setSelectedElementId(element.id);
                       startDragInteraction(e, element);
                       setActiveTool("grab");
                     },
