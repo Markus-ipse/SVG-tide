@@ -489,17 +489,33 @@ const SelectionMarker = ({
     };
   }, []);
 
+  const dashLength = 5;
+  const staticDashLength = dashLength / zoomLevel;
+
   return (
-    <rect
-      strokeWidth={2 / zoomLevel}
-      stroke="black"
-      strokeDasharray={5 / zoomLevel}
-      strokeDashoffset={dashOffset / zoomLevel}
-      fill="none"
-      x={selectionBounds?.x}
-      y={selectionBounds?.y}
-      width={selectionBounds?.width}
-      height={selectionBounds?.height}
-    />
+    <>
+      <rect
+        strokeWidth={2 / zoomLevel}
+        stroke="black"
+        strokeDasharray={staticDashLength}
+        strokeDashoffset={dashOffset / zoomLevel}
+        fill="none"
+        x={selectionBounds?.x}
+        y={selectionBounds?.y}
+        width={selectionBounds?.width}
+        height={selectionBounds?.height}
+      />
+      <rect
+        strokeWidth={2 / zoomLevel}
+        stroke="white"
+        strokeDasharray={staticDashLength}
+        strokeDashoffset={(dashOffset + dashLength) / zoomLevel}
+        fill="none"
+        x={selectionBounds?.x}
+        y={selectionBounds?.y}
+        width={selectionBounds?.width}
+        height={selectionBounds?.height}
+      />
+    </>
   );
 };
