@@ -17,7 +17,8 @@ import { assertNever, assertOk } from "./utils/assert";
 import { produce } from "immer";
 import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
-
+import { ShapeIcon } from "./components/icons/Shapes";
+import { CursorArrowRaysIcon } from "@heroicons/react/24/outline";
 type DraggedItem =
   | ({ type: "rect" } & Coord)
   | ({ type: "circle" } & Coord)
@@ -325,21 +326,28 @@ export function App() {
       </div>
       <div className="flex m-8">
         <div>
-          <h4 className="text-l font-semibold">Shapes</h4>
-          <div className="flex flex-wrap">
+          <h4 className="text-l font-semibold">Tools</h4>
+          <div className="flex flex-wrap gap-2 mr-2 p-2 border-2 border-slate-200">
             <Button
-              className="border p-1 rounded-md m-1"
+              className="border p-2 rounded-md "
+              toggled={activeTool === null}
+              onClick={() => setActiveTool(null)}
+            >
+              <CursorArrowRaysIcon className="size-4" />
+            </Button>
+            <Button
+              className="border p-2 rounded-md"
               toggled={activeTool === "rectangle"}
               onClick={() => setActiveTool("rectangle")}
             >
-              Rectangle
+              <ShapeIcon shape="rect" />
             </Button>
             <Button
-              className="border p-1 rounded-md m-1"
+              className="border p-2 rounded-md"
               toggled={activeTool === "circle"}
               onClick={() => setActiveTool("circle")}
             >
-              Circle
+              <ShapeIcon shape="circle" />
             </Button>
           </div>
         </div>
