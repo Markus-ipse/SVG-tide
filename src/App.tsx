@@ -18,6 +18,7 @@ import { assertNever, assertOk } from "./utils/assert";
 import { produce } from "immer";
 import { MappedOmit } from "./types/type-utils";
 import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
+import { SelectionMarker } from "./components/SelectionMarker";
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
@@ -468,54 +469,4 @@ const toSvgElementAttr = (item: SvgItem): React.SVGProps<SVGElement> => {
     default:
       assertNever(item);
   }
-};
-
-const SelectionMarker = ({
-  selectionBounds,
-  zoomLevel,
-}: {
-  selectionBounds: DOMRect;
-  zoomLevel: number;
-}) => {
-  const [dashOffset, setDashOffset] = useState(9);
-
-  useEffect(() => {
-    const timerId = setInterval(() => {
-      setDashOffset((prev) => (prev <= 0 ? 9 : prev - 1));
-    }, 30);
-
-    return () => {
-      clearInterval(timerId);
-    };
-  }, []);
-
-  const dashLength = 5;
-  const staticDashLength = dashLength / zoomLevel;
-
-  return (
-    <>
-      <rect
-        strokeWidth={2 / zoomLevel}
-        stroke="black"
-        strokeDasharray={staticDashLength}
-        strokeDashoffset={dashOffset / zoomLevel}
-        fill="none"
-        x={selectionBounds?.x}
-        y={selectionBounds?.y}
-        width={selectionBounds?.width}
-        height={selectionBounds?.height}
-      />
-      <rect
-        strokeWidth={2 / zoomLevel}
-        stroke="white"
-        strokeDasharray={staticDashLength}
-        strokeDashoffset={(dashOffset + dashLength) / zoomLevel}
-        fill="none"
-        x={selectionBounds?.x}
-        y={selectionBounds?.y}
-        width={selectionBounds?.width}
-        height={selectionBounds?.height}
-      />
-    </>
-  );
 };
