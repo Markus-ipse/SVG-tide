@@ -31,7 +31,7 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
               <input
                 type="color"
                 className="ml-auto w-20 p-1"
-                value={svgItem.attr.fill || "#000000"}
+                value={svgItem.attr.fill}
                 onChange={(e) => onChange(svgItem, { fill: e.target.value })}
               />
             </div>
@@ -42,7 +42,7 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
                 min={0}
                 step={0.1}
                 className="ml-auto w-20 border-2 border-slate-200 p-1"
-                value={svgItem.attr.fillOpacity || "#000000"}
+                value={svgItem.attr.fillOpacity.toString()}
                 onChange={(e) =>
                   onChange(svgItem, { fillOpacity: parseFloat(e.target.value) })
                 }

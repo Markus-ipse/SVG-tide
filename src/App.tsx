@@ -1,6 +1,5 @@
 import React, {
   createElement,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -16,7 +15,6 @@ import { usePanAndZoom } from "./hooks/pan-and-zoom";
 import { useWheelEventOverrides } from "./hooks/browser-zoom-prevention";
 import { assertNever, assertOk } from "./utils/assert";
 import { produce } from "immer";
-import { MappedOmit } from "./types/type-utils";
 import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
 
@@ -37,9 +35,9 @@ export function App() {
       height: 100,
       fill: "#BBC42A",
       fillOpacity: 1,
+      strokeWidth: 0,
     }),
     createCircle({ cx: 150, cy: 150, r: 50, fill: "#FF0000", fillOpacity: 1 }),
-
     createPolygon({
       points: [
         { x: 100, y: 10 },
@@ -49,7 +47,6 @@ export function App() {
       fill: "#00dd00",
       fillOpacity: 1,
       stroke: "#800080",
-      strokeWidth: 2,
     }),
   ]);
 
