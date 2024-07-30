@@ -31,7 +31,7 @@ export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
 
-  const [svgItems, setSvgItems] = useState<SvgItem[]>([
+  const [svgItems, setSvgItems] = useState<SvgItem[]>(() => [
     createRect({
       x: 50,
       y: 50,
@@ -275,16 +275,11 @@ export function App() {
   };
 
   const reorderElement = (currentIndex: number, newIndex: number) => {
-    if (newIndex < 0 || newIndex >= svgItems.length) return;
+    const result = Array.from(svgItems);
+    const [removed] = result.splice(currentIndex, 1);
+    result.splice(newIndex, 0, removed);
 
-    setSvgItems((elements) => {
-      const newElements = [...elements];
-      [newElements[currentIndex], newElements[newIndex]] = [
-        newElements[newIndex],
-        newElements[currentIndex],
-      ];
-      return newElements;
-    });
+    setSvgItems(result);
   };
 
   function getMap() {
