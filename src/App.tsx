@@ -19,6 +19,9 @@ import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
 import { ShapeIcon } from "./components/icons/Shapes";
 import { CursorArrowRaysIcon } from "@heroicons/react/24/outline";
+
+type Tool = "rectangle" | "circle" | "grab" | null;
+
 type DraggedItem =
   | ({ type: "rect" } & Coord)
   | ({ type: "circle" } & Coord)
@@ -59,9 +62,7 @@ export function App() {
     [svgItems, selectedElementId]
   );
 
-  const [activeTool, setActiveTool] = useState<
-    "rectangle" | "circle" | "grab" | null
-  >(null);
+  const [activeTool, setActiveTool] = useState<Tool>(null);
 
   const isDraggingRef = useRef<
     | false
@@ -301,13 +302,6 @@ export function App() {
     paz.viewBox.height,
   ].join(" ");
 
-  const cursor =
-    activeTool === null
-      ? "default"
-      : activeTool === "grab"
-        ? "grab"
-        : "crosshair";
-
   return (
     <div>
       <div className="flex m-8 ">
@@ -363,7 +357,7 @@ export function App() {
             style={{
               backgroundColor: "#EEE",
               touchAction: "none",
-              cursor: cursor,
+              cursor: getCursor(activeTool),
             }}
             ref={canvasRef}
             width={canvasSize.width}
@@ -484,5 +478,19 @@ const toSvgElementAttr = (item: SvgItem): React.SVGProps<SVGElement> => {
     }
     default:
       assertNever(item);
+  }
+};
+
+const getCursor = (activeTool: Tool) => {
+  switch (activeTool) {
+    case null:
+      return "default";
+    case "grab":
+      return "grab";
+    case "rectangle":
+    case "circle":
+      return "crosshair";
+    default:
+      assertNever(activeTool);
   }
 };
