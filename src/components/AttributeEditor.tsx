@@ -37,11 +37,24 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
             </div>
             <div className="flex items-center p-1 border-b last-of-type:border-0">
               <span className="font-semibold">Fill opacity</span>
+
+              <input
+                className="ml-auto mr-4"
+                type="range"
+                min="0"
+                max="1"
+                step={0.01}
+                value={svgItem.attr.fillOpacity.toString()}
+                onChange={(e) =>
+                  onChange(svgItem, { fillOpacity: parseFloat(e.target.value) })
+                }
+              />
+
               <input
                 type="number"
                 min={0}
                 step={0.1}
-                className="ml-auto w-20 border-2 border-slate-200 p-1"
+                className="w-20 border-2 border-slate-200 p-1"
                 value={svgItem.attr.fillOpacity.toString()}
                 onChange={(e) =>
                   onChange(svgItem, { fillOpacity: parseFloat(e.target.value) })

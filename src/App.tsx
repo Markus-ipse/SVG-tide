@@ -301,6 +301,13 @@ export function App() {
     paz.viewBox.height,
   ].join(" ");
 
+  const cursor =
+    activeTool === null
+      ? "default"
+      : activeTool === "grab"
+        ? "grab"
+        : "crosshair";
+
   return (
     <div>
       <div className="flex m-8 ">
@@ -353,7 +360,11 @@ export function App() {
         </div>
         <div>
           <svg
-            style={{ backgroundColor: "#EEE", touchAction: "none" }}
+            style={{
+              backgroundColor: "#EEE",
+              touchAction: "none",
+              cursor: cursor,
+            }}
             ref={canvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
