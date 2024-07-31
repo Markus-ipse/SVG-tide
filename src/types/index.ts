@@ -45,6 +45,10 @@ export type Polygon = {
   type: "polygon";
   attr: {
     points: Coord[];
+    sides: number;
+    cx: number;
+    cy: number;
+    r: number;
   } & Shared;
 };
 

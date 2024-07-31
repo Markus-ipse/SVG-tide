@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { Coord, SvgItem } from "./types";
+import type { Circle, Coord, Polygon, SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
@@ -19,19 +19,35 @@ import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
 import { ShapeIcon } from "./components/icons/Shapes";
 import { CursorArrowRaysIcon } from "@heroicons/react/24/outline";
+import {
+  calculateDistance,
+  getCoords,
+  getPolygonPath,
+} from "./utils/shape-utils";
 
-type Tool = "rectangle" | "circle" | "grab" | null;
+type Tool = "rectangle" | "circle" | "polygon" | "grab" | null;
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
   | ({ type: "circle" } & Coord)
-  | { type: "polygon"; points: Coord[] };
+  | ({ type: "polygon" } & Coord);
 
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
 
   const [svgItems, setSvgItems] = useState<SvgItem[]>(() => [
+    createPolygon({
+      cx: 150,
+      cy: 150,
+      r: 30,
+      sides: 6,
+      points: [],
+      fill: "#00dd00",
+      fillOpacity: 1,
+      stroke: "#800080",
+    }),
+    createCircle({ cx: 150, cy: 150, r: 50, fill: "#FF0000", fillOpacity: 1 }),
     createRect({
       x: 50,
       y: 50,
@@ -40,17 +56,6 @@ export function App() {
       fill: "#BBC42A",
       fillOpacity: 1,
       strokeWidth: 0,
-    }),
-    createCircle({ cx: 150, cy: 150, r: 50, fill: "#FF0000", fillOpacity: 1 }),
-    createPolygon({
-      points: [
-        { x: 100, y: 10 },
-        { x: 150, y: 190 },
-        { x: 50, y: 190 },
-      ],
-      fill: "#00dd00",
-      fillOpacity: 1,
-      stroke: "#800080",
     }),
   ]);
 
@@ -96,7 +101,8 @@ export function App() {
     } else if (svgItem?.type === "polygon") {
       itemPos = {
         type: svgItem.type,
-        points: svgItem.attr.points.map((p) => ({ x: p.x, y: p.y })),
+        x: +svgItem.attr.cx,
+        y: +svgItem.attr.cy,
       };
     }
 
@@ -134,6 +140,17 @@ export function App() {
             cx: isDraggingRef.current.startX,
             cy: isDraggingRef.current.startY,
             r: 0,
+          })
+        );
+        break;
+      case "polygon":
+        addElement(
+          createPolygon({
+            cx: isDraggingRef.current.startX,
+            cy: isDraggingRef.current.startY,
+            r: 0,
+            sides: 5,
+            points: [],
           })
         );
         break;
@@ -183,13 +200,30 @@ export function App() {
         assertOk(latestSvgItem.type === "circle");
 
         // Calculate new radius
-        const newRadius = Math.sqrt(
-          Math.pow(newX - latestSvgItem.attr.cx, 2) +
-            Math.pow(newY - latestSvgItem.attr.cy, 2)
-        );
+        const newRadius = calculateDistance(getCoords(latestSvgItem), {
+          x: newX,
+          y: newY,
+        });
 
         // Update the circle's attributes
         setAttributes(latestSvgItem, { r: newRadius });
+
+        break;
+      }
+
+      case "polygon": {
+        assertOk(isDraggingRef.current);
+        assertOk(latestSvgItem.type === "polygon");
+
+        // Calculate new radius
+        const newRadius = calculateDistance(getCoords(latestSvgItem), {
+          x: newX,
+          y: newY,
+        });
+
+        setAttributes(latestSvgItem, {
+          r: newRadius,
+        });
 
         break;
       }
@@ -212,10 +246,8 @@ export function App() {
             });
           } else if (preDragPos.type == "polygon") {
             setAttributes(selectedElement, {
-              points: preDragPos.points.map((p) => ({
-                x: p.x + deltaX,
-                y: p.y + deltaY,
-              })),
+              cx: preDragPos.x + deltaX,
+              cy: preDragPos.y + deltaY,
             });
           }
         }
@@ -345,6 +377,13 @@ export function App() {
             >
               <ShapeIcon shape="circle" />
             </Button>
+            <Button
+              className="border p-2 rounded-md"
+              toggled={activeTool === "polygon"}
+              onClick={() => setActiveTool("polygon")}
+            >
+              <ShapeIcon shape="polygon" />
+            </Button>
           </div>
         </div>
         <div>
@@ -465,10 +504,16 @@ const toSvgElementAttr = (item: SvgItem): React.SVGProps<SVGElement> => {
     case "circle":
       return item.attr;
     case "polygon": {
-      const { points, ...rest } = item.attr;
+      const path = getPolygonPath({
+        cx: item.attr.cx,
+        cy: item.attr.cy,
+        sides: item.attr.sides,
+        r: item.attr.r,
+      });
+
       return {
-        ...rest,
-        points: points.map((p) => `${p.x},${p.y}`).join(" "),
+        ...item.attr,
+        points: path.map((p) => `${p.x},${p.y}`).join(" "),
       };
     }
     default:
@@ -484,6 +529,7 @@ const getCursor = (activeTool: Tool) => {
       return "grab";
     case "rectangle":
     case "circle":
+    case "polygon":
       return "crosshair";
     default:
       assertNever(activeTool);

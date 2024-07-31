@@ -22,7 +22,7 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
           </span>
         )}
       </h4>
-      <div className="p-2 pb-1 border-2 border-slate-200 ">
+      <div className="p-2 pb-1 pt-1 border-2 border-slate-200 ">
         {!svgItem && <div className="text-slate-500">No element selected</div>}
         {svgItem && (
           <>
@@ -30,7 +30,7 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
               <span className="font-semibold">Fill</span>
               <input
                 type="color"
-                className="ml-auto w-20 p-1"
+                className="ml-auto w-20 p-1 h-9"
                 value={svgItem.attr.fill}
                 onChange={(e) => onChange(svgItem, { fill: e.target.value })}
               />
@@ -79,11 +79,25 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
               <span className="font-semibold">Stroke color</span>
               <input
                 type="color"
-                className="ml-auto w-20 p-1"
+                className="ml-auto w-20 p-1 h-9"
                 value={svgItem.attr.stroke}
                 onChange={(e) => onChange(svgItem, { stroke: e.target.value })}
               />
             </div>
+
+            {svgItem.type === "polygon" && (
+              <div className="flex items-center p-1 border-b last-of-type:border-0">
+                <span className="font-semibold"># sides</span>
+                <input
+                  type="number"
+                  className="ml-auto w-20 border-2 border-slate-200 p-1"
+                  value={svgItem.attr.sides}
+                  onChange={(e) =>
+                    onChange(svgItem, { sides: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+            )}
           </>
         )}
       </div>
