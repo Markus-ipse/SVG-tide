@@ -115,7 +115,7 @@ export function App() {
     return isDraggingRef.current;
   };
 
-  const handleStartDrawing = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     if (!activeTool) return;
 
     startDragInteraction(e);
@@ -161,7 +161,7 @@ export function App() {
     }
   };
 
-  const handleDrawing = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     if (!activeTool || svgItems.length === 0 || isDraggingRef.current === false)
       return;
 
@@ -262,6 +262,29 @@ export function App() {
   const stopDrawing = () => {
     isDraggingRef.current = false;
     setActiveTool(null); // Stop drawing
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    console.log(e);
+    if (!selectedElement) return;
+
+    if (e.key === "Delete" || e.key === "x") {
+      removeElement(selectedElement.id);
+      setSelectedElementId(null);
+      return;
+    }
+
+    if (e.key === "f" || e.key === "b") {
+      const delta = e.key === "b" ? 1 : -1;
+      const currentIndex = svgItems.findIndex(
+        (el) => el.id === selectedElement.id
+      );
+      const newIndex = currentIndex + delta;
+
+      if (newIndex < 0 || newIndex >= svgItems.length) return;
+
+      reorderElement(currentIndex, newIndex);
+    }
   };
 
   // Prevent browser zoom when scrolling/pinching on canvas
@@ -398,11 +421,13 @@ export function App() {
             height={canvasSize.height}
             className="border-2 border-slate-200"
             viewBox={viewBoxStr}
+            tabIndex={-1}
+            onKeyDown={handleKeyPress}
             onMouseDown={(e) =>
-              activeTool ? handleStartDrawing(e) : paz.handleMouseDown(e)
+              activeTool ? handleMouseDown(e) : paz.handleMouseDown(e)
             }
             onMouseMove={(e) =>
-              activeTool ? handleDrawing(e) : paz.handleMouseMove(e)
+              activeTool ? handleMouseMove(e) : paz.handleMouseMove(e)
             }
             onMouseUp={() => (activeTool ? stopDrawing() : paz.handleMouseUp())}
             onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
