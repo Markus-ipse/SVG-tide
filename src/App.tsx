@@ -1,11 +1,12 @@
 import React, {
   createElement,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import type { Circle, Coord, Polygon, SvgItem } from "./types";
+import type { Coord, SvgItem } from "./types";
 import "./App.css";
 import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
@@ -80,9 +81,9 @@ export function App() {
 
   const paz = usePanAndZoom();
 
-  const startDragInteraction = (e: React.MouseEvent, svgItem?: SvgItem) => {
-    const startX = e.nativeEvent.offsetX / paz.zoomLevel + paz.viewBox.minX;
-    const startY = e.nativeEvent.offsetY / paz.zoomLevel + paz.viewBox.minY;
+  const startDragInteraction = (mouseCoord: Coord, svgItem?: SvgItem) => {
+    const startX = mouseCoord.x / paz.zoomLevel + paz.viewBox.minX;
+    const startY = mouseCoord.y / paz.zoomLevel + paz.viewBox.minY;
 
     let itemPos: DraggedItem | null = null;
 
@@ -116,9 +117,12 @@ export function App() {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (document.pointerLockElement === canvasRef.current) return;
+    console.log("handleMouseDown");
+
     if (!activeTool) return;
 
-    startDragInteraction(e);
+    startDragInteraction(getCoordFromEvent(e));
     assertOk(isDraggingRef.current);
 
     switch (activeTool) {
@@ -265,7 +269,6 @@ export function App() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    console.log(e);
     if (!selectedElement) return;
 
     if (e.key === "Delete" || e.key === "x") {
@@ -476,7 +479,7 @@ export function App() {
                       if (e.button !== 0) return; // Only handle left mouse button
                       if (activeTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
                       setSelectedElementId(element.id);
-                      startDragInteraction(e, element);
+                      startDragInteraction(getCoordFromEvent(e), element);
                       setActiveTool("grab");
                     },
                     onMouseUp: (e) => {
@@ -560,3 +563,8 @@ const getCursor = (activeTool: Tool) => {
       assertNever(activeTool);
   }
 };
+
+const getCoordFromEvent = (e: React.MouseEvent): Coord => ({
+  x: e.nativeEvent.offsetX,
+  y: e.nativeEvent.offsetY,
+});
