@@ -12,7 +12,7 @@ import { ElementList } from "./components/ElementList";
 import { AttributeEditor } from "./components/AttributeEditor";
 import { Button } from "./components/Button";
 import { canvasSize } from "./canvasSize";
-import { usePanAndZoom } from "./hooks/pan-and-zoom";
+import { useCanvas } from "./hooks/pan-and-zoom";
 import { useWheelEventOverrides } from "./hooks/browser-zoom-prevention";
 import { assertNever, assertOk } from "./utils/assert";
 import { produce } from "immer";
@@ -70,20 +70,12 @@ export function App() {
 
   const [activeTool, setActiveTool] = useState<Tool>(null);
 
-  const isDraggingRef = useRef<
-    | false
-    | {
-        startX: number;
-        startY: number;
-        draggedItem: DraggedItem | null;
-      }
-  >(false);
+  const dragItemStateRef = useRef<DraggedItem | null>(null);
 
-  const paz = usePanAndZoom();
+  const canvas = useCanvas();
 
   const startDragInteraction = (mouseCoord: Coord, svgItem?: SvgItem) => {
-    const startX = mouseCoord.x / paz.zoomLevel + paz.viewBox.minX;
-    const startY = mouseCoord.y / paz.zoomLevel + paz.viewBox.minY;
+    canvas.dragInteraction.setStartPos(mouseCoord);
 
     let itemPos: DraggedItem | null = null;
 
@@ -107,30 +99,23 @@ export function App() {
       };
     }
 
-    isDraggingRef.current = {
-      startX,
-      startY,
-      draggedItem: itemPos,
-    };
+    dragItemStateRef.current = itemPos;
 
-    return isDraggingRef.current;
+    return dragItemStateRef.current;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (document.pointerLockElement === canvasRef.current) return;
-    console.log("handleMouseDown");
-
     if (!activeTool) return;
 
     startDragInteraction(getCoordFromEvent(e));
-    assertOk(isDraggingRef.current);
+    assertOk(canvas.dragInteraction.startPos);
 
     switch (activeTool) {
       case "rectangle":
         addElement(
           createRect({
-            x: isDraggingRef.current.startX,
-            y: isDraggingRef.current.startY,
+            x: canvas.dragInteraction.startPos.x,
+            y: canvas.dragInteraction.startPos.y,
             width: 0,
             height: 0,
           })
@@ -141,8 +126,8 @@ export function App() {
       case "circle":
         addElement(
           createCircle({
-            cx: isDraggingRef.current.startX,
-            cy: isDraggingRef.current.startY,
+            cx: canvas.dragInteraction.startPos.x,
+            cy: canvas.dragInteraction.startPos.y,
             r: 0,
           })
         );
@@ -150,8 +135,8 @@ export function App() {
       case "polygon":
         addElement(
           createPolygon({
-            cx: isDraggingRef.current.startX,
-            cy: isDraggingRef.current.startY,
+            cx: canvas.dragInteraction.startPos.x,
+            cy: canvas.dragInteraction.startPos.y,
             r: 0,
             sides: 5,
             points: [],
@@ -166,27 +151,32 @@ export function App() {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!activeTool || svgItems.length === 0 || isDraggingRef.current === false)
+    if (
+      !activeTool ||
+      svgItems.length === 0 ||
+      canvas.dragInteraction.startPos === null
+    )
       return;
+    const newPos = canvas.takeZoomIntoAccount(getCoordFromEvent(e));
 
-    const newX = e.nativeEvent.offsetX / paz.zoomLevel + paz.viewBox.minX;
-    const newY = e.nativeEvent.offsetY / paz.zoomLevel + paz.viewBox.minY;
-
-    const deltaX = newX - isDraggingRef.current.startX;
-    const deltaY = newY - isDraggingRef.current.startY;
+    const deltaX = newPos.x - canvas.dragInteraction.startPos.x;
+    const deltaY = newPos.y - canvas.dragInteraction.startPos.y;
 
     const latestSvgItem = svgItems[svgItems.length - 1];
 
     switch (activeTool) {
       case "rectangle": {
-        assertOk(isDraggingRef.current);
+        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "rect");
 
         // Calculate new position and size
         const newWidth = Math.abs(deltaX);
         const newHeight = Math.abs(deltaY);
-        const minX = Math.min(newX, isDraggingRef.current.startX);
-        const minY = Math.min(newY, isDraggingRef.current.startY);
+
+        // if dragging to the right or down, the rectangle will start at the initial position and just get wider/taller
+        // if dragging to the left or up, the rectangle will get wider/taller AND move its starting position to the cursor position
+        const minX = Math.min(newPos.x, canvas.dragInteraction.startPos.x);
+        const minY = Math.min(newPos.y, canvas.dragInteraction.startPos.y);
 
         // Update the rectangle's attributes
         setAttributes(latestSvgItem, {
@@ -200,14 +190,11 @@ export function App() {
       }
 
       case "circle": {
-        assertOk(isDraggingRef.current);
+        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "circle");
 
         // Calculate new radius
-        const newRadius = calculateDistance(getCoords(latestSvgItem), {
-          x: newX,
-          y: newY,
-        });
+        const newRadius = calculateDistance(getCoords(latestSvgItem), newPos);
 
         // Update the circle's attributes
         setAttributes(latestSvgItem, { r: newRadius });
@@ -216,14 +203,11 @@ export function App() {
       }
 
       case "polygon": {
-        assertOk(isDraggingRef.current);
+        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "polygon");
 
         // Calculate new radius
-        const newRadius = calculateDistance(getCoords(latestSvgItem), {
-          x: newX,
-          y: newY,
-        });
+        const newRadius = calculateDistance(getCoords(latestSvgItem), newPos);
 
         setAttributes(latestSvgItem, {
           r: newRadius,
@@ -234,7 +218,7 @@ export function App() {
 
       case "grab": {
         if (selectedElement) {
-          const preDragPos = isDraggingRef.current.draggedItem;
+          const preDragPos = dragItemStateRef.current;
           assertOk(preDragPos);
           assertOk(selectedElement.type === preDragPos.type);
 
@@ -264,7 +248,7 @@ export function App() {
   };
 
   const stopDrawing = () => {
-    isDraggingRef.current = false;
+    dragItemStateRef.current = null;
     setActiveTool(null); // Stop drawing
   };
 
@@ -349,10 +333,10 @@ export function App() {
   }
 
   const viewBoxStr = [
-    paz.viewBox.minX,
-    paz.viewBox.minY,
-    paz.viewBox.width,
-    paz.viewBox.height,
+    canvas.viewBox.minX,
+    canvas.viewBox.minY,
+    canvas.viewBox.width,
+    canvas.viewBox.height,
   ].join(" ");
 
   return (
@@ -427,15 +411,17 @@ export function App() {
             tabIndex={-1}
             onKeyDown={handleKeyPress}
             onMouseDown={(e) =>
-              activeTool ? handleMouseDown(e) : paz.handleMouseDown(e)
+              activeTool ? handleMouseDown(e) : canvas.handleMouseDown(e)
             }
             onMouseMove={(e) =>
-              activeTool ? handleMouseMove(e) : paz.handleMouseMove(e)
+              activeTool ? handleMouseMove(e) : canvas.handleMouseMove(e)
             }
-            onMouseUp={() => (activeTool ? stopDrawing() : paz.handleMouseUp())}
-            onMouseLeave={paz.handleMouseUp} // Handle case where mouse leaves the SVG area
+            onMouseUp={() =>
+              activeTool ? stopDrawing() : canvas.handleMouseUp()
+            }
+            onMouseLeave={canvas.handleMouseUp} // Handle case where mouse leaves the SVG area
             onWheel={(e) =>
-              paz.handleZoom(
+              canvas.handleZoom(
                 e.deltaY < 0,
                 e.nativeEvent.offsetX,
                 e.nativeEvent.offsetY
@@ -495,16 +481,19 @@ export function App() {
             {selectionBounds && (
               <SelectionMarker
                 selectionBounds={selectionBounds}
-                zoomLevel={paz.zoomLevel}
+                zoomLevel={canvas.zoomLevel}
               />
             )}
           </svg>
           <div className="pt-2">
             <span className="font-semibold mr-1">Zoom:</span>
-            {Math.round(paz.zoomLevel * 100)}%
+            {Math.round(canvas.zoomLevel * 100)}%
             <span className="font-semibold ml-4 mr-1">X/Y offset:</span>
-            {Math.round(paz.viewBox.minX)}, {Math.round(paz.viewBox.minY)}
-            <Button className="border p-1 rounded-md ml-6" onClick={paz.reset}>
+            {Math.round(canvas.viewBox.minX)}, {Math.round(canvas.viewBox.minY)}
+            <Button
+              className="border p-1 rounded-md ml-6"
+              onClick={canvas.reset}
+            >
               Reset pan & zoom
             </Button>
           </div>

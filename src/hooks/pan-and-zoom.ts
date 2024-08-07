@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { canvasSize } from "../canvasSize";
+import { Coord } from "../types";
 
 const initialViewBox = {
   minX: 0,
@@ -8,7 +9,11 @@ const initialViewBox = {
   height: canvasSize.height,
 };
 
-export const usePanAndZoom = () => {
+export const useCanvas = () => {
+  const dragInteractionRef = useRef<{
+    startPos: Coord;
+  } | null>(null);
+
   // Initialize viewBox state
   const [viewBox, setViewBox] = useState(initialViewBox);
 
@@ -94,13 +99,29 @@ export const usePanAndZoom = () => {
 
   const zoomLevel = canvasSize.width / viewBox.width;
 
+  const takeZoomIntoAccount = (coord: Coord) => ({
+    x: coord.x / zoomLevel + viewBox.minX,
+    y: coord.y / zoomLevel + viewBox.minY,
+  });
+
+  const dragInteraction = {
+    startPos: dragInteractionRef.current?.startPos ?? null,
+    setStartPos: (startFrom: Coord) => {
+      dragInteractionRef.current = {
+        startPos: takeZoomIntoAccount(startFrom),
+      };
+    },
+  };
+
   return {
     viewBox,
     zoomLevel,
+    dragInteraction,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     handleZoom,
+    takeZoomIntoAccount,
     reset,
   };
 };
