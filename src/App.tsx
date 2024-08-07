@@ -28,6 +28,11 @@ import {
 
 type Tool = "rectangle" | "circle" | "polygon" | "grab" | null;
 
+type DraggedItem =
+  | ({ type: "rect" } & Coord)
+  | ({ type: "circle" } & Coord)
+  | ({ type: "polygon" } & Coord);
+
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
@@ -65,10 +70,38 @@ export function App() {
 
   const [activeTool, setActiveTool] = useState<Tool>(null);
 
+  const dragItemStateRef = useRef<DraggedItem | null>(null);
+
   const canvas = useCanvas();
 
-  const startDragInteraction = (mouseCoord: Coord) => {
+  const startDragInteraction = (mouseCoord: Coord, svgItem?: SvgItem) => {
     canvas.dragInteraction.setStartPos(mouseCoord);
+
+    let itemPos: DraggedItem | null = null;
+
+    if (svgItem?.type === "rect") {
+      itemPos = {
+        type: svgItem.type,
+        x: +svgItem.attr.x,
+        y: +svgItem.attr.y,
+      };
+    } else if (svgItem?.type === "circle") {
+      itemPos = {
+        type: svgItem.type,
+        x: +svgItem.attr.cx,
+        y: +svgItem.attr.cy,
+      };
+    } else if (svgItem?.type === "polygon") {
+      itemPos = {
+        type: svgItem.type,
+        x: +svgItem.attr.cx,
+        y: +svgItem.attr.cy,
+      };
+    }
+
+    dragItemStateRef.current = itemPos;
+
+    return dragItemStateRef.current;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -133,6 +166,7 @@ export function App() {
 
     switch (activeTool) {
       case "rectangle": {
+        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "rect");
 
         // Calculate new position and size
@@ -156,6 +190,7 @@ export function App() {
       }
 
       case "circle": {
+        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "circle");
 
         // Calculate new radius
@@ -168,6 +203,7 @@ export function App() {
       }
 
       case "polygon": {
+        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "polygon");
 
         // Calculate new radius
@@ -182,24 +218,24 @@ export function App() {
 
       case "grab": {
         if (selectedElement) {
-          const { startPos } = canvas.dragInteraction;
+          const preDragPos = dragItemStateRef.current;
+          assertOk(preDragPos);
+          assertOk(selectedElement.type === preDragPos.type);
 
-          assertOk(startPos);
-
-          if (selectedElement.type == "rect") {
+          if (preDragPos.type == "rect") {
             setAttributes(selectedElement, {
-              x: startPos.x + deltaX,
-              y: startPos.y + deltaY,
+              x: preDragPos.x + deltaX,
+              y: preDragPos.y + deltaY,
             });
-          } else if (selectedElement.type == "circle") {
+          } else if (preDragPos.type == "circle") {
             setAttributes(selectedElement, {
-              cx: startPos.x + deltaX,
-              cy: startPos.y + deltaY,
+              cx: preDragPos.x + deltaX,
+              cy: preDragPos.y + deltaY,
             });
-          } else if (selectedElement.type == "polygon") {
+          } else if (preDragPos.type == "polygon") {
             setAttributes(selectedElement, {
-              cx: startPos.x + deltaX,
-              cy: startPos.y + deltaY,
+              cx: preDragPos.x + deltaX,
+              cy: preDragPos.y + deltaY,
             });
           }
         }
@@ -212,6 +248,7 @@ export function App() {
   };
 
   const stopDrawing = () => {
+    dragItemStateRef.current = null;
     setActiveTool(null); // Stop drawing
   };
 
@@ -428,7 +465,7 @@ export function App() {
                       if (e.button !== 0) return; // Only handle left mouse button
                       if (activeTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
                       setSelectedElementId(element.id);
-                      startDragInteraction(getCoordFromEvent(e));
+                      startDragInteraction(getCoordFromEvent(e), element);
                       setActiveTool("grab");
                     },
                     onMouseUp: (e) => {
