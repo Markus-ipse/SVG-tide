@@ -10,15 +10,13 @@ const initialViewBox = {
 };
 
 export const useCanvas = () => {
-  const dragInteractionRef = useRef<{
-    startPos: Coord;
-  } | null>(null);
+  const dragInteractionRef = useRef<Coord | null>(null);
 
   // Initialize viewBox state
   const [viewBox, setViewBox] = useState(initialViewBox);
 
   // State to track if the mouse is pressed down
-  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [mouseButtonDown, setMouseButtonDown] = useState(false);
   // State to store the initial mouse position
   const [initialMousePosition, setInitialMousePosition] = useState({
     x: 0,
@@ -29,18 +27,18 @@ export const useCanvas = () => {
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (e.button !== 1) return; // Only handle middle mouse button
 
-    setIsMouseDown(true);
+    setMouseButtonDown(true);
     setInitialMousePosition({ x: e.clientX, y: e.clientY });
   };
 
   // Handle mouse up event
   const handleMouseUp = () => {
-    setIsMouseDown(false);
+    setMouseButtonDown(false);
   };
 
   // Handle mouse move event
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (isMouseDown) {
+    if (mouseButtonDown) {
       const dx = e.clientX - initialMousePosition.x;
       const dy = e.clientY - initialMousePosition.y;
 
@@ -105,13 +103,16 @@ export const useCanvas = () => {
   });
 
   const dragInteraction = {
-    startPos: dragInteractionRef.current?.startPos ?? null,
+    startPos: dragInteractionRef.current,
     setStartPos: (startFrom: Coord) => {
-      dragInteractionRef.current = {
-        startPos: takeZoomIntoAccount(startFrom),
-      };
+      dragInteractionRef.current = takeZoomIntoAccount(startFrom);
+      return dragInteractionRef.current;
+    },
+    reset: () => {
+      dragInteractionRef.current = null;
     },
   };
+  console.log("hook!", dragInteraction.startPos);
 
   return {
     viewBox,

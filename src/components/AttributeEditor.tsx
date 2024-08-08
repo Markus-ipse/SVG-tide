@@ -98,6 +98,20 @@ export const AttributeEditor = ({ svgItem, onChange }: Props) => {
                 />
               </div>
             )}
+
+            {svgItem.type === "rect" && (
+              <div className="flex items-center p-1 border-b last-of-type:border-0">
+                <span className="font-semibold">Corner radius</span>
+                <input
+                  type="number"
+                  className="ml-auto w-20 border-2 border-slate-200 p-1"
+                  value={svgItem.attr.rx}
+                  onChange={(e) =>
+                    onChange(svgItem, { rx: parseFloat(e.target.value) })
+                  }
+                />
+              </div>
+            )}
           </>
         )}
       </div>

@@ -1,6 +1,5 @@
 import React, {
   createElement,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -57,6 +56,7 @@ export function App() {
       fill: "#BBC42A",
       fillOpacity: 1,
       strokeWidth: 0,
+      rx: 10,
     }),
   ]);
 
@@ -75,49 +75,53 @@ export function App() {
   const canvas = useCanvas();
 
   const startDragInteraction = (mouseCoord: Coord, svgItem?: SvgItem) => {
-    canvas.dragInteraction.setStartPos(mouseCoord);
+    const startPos = canvas.dragInteraction.setStartPos(mouseCoord);
 
     let itemPos: DraggedItem | null = null;
 
     if (svgItem?.type === "rect") {
       itemPos = {
         type: svgItem.type,
-        x: +svgItem.attr.x,
-        y: +svgItem.attr.y,
+        x: svgItem.attr.x,
+        y: svgItem.attr.y,
       };
     } else if (svgItem?.type === "circle") {
       itemPos = {
         type: svgItem.type,
-        x: +svgItem.attr.cx,
-        y: +svgItem.attr.cy,
+        x: svgItem.attr.cx,
+        y: svgItem.attr.cy,
       };
     } else if (svgItem?.type === "polygon") {
       itemPos = {
         type: svgItem.type,
-        x: +svgItem.attr.cx,
-        y: +svgItem.attr.cy,
+        x: svgItem.attr.cx,
+        y: svgItem.attr.cy,
       };
     }
 
     dragItemStateRef.current = itemPos;
 
-    return dragItemStateRef.current;
+    return startPos;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!activeTool) return;
 
-    startDragInteraction(getCoordFromEvent(e));
-    assertOk(canvas.dragInteraction.startPos);
+    const startPos = startDragInteraction(getCoordFromEvent(e));
+
+    console.log("handleMouseDown", canvas.dragInteraction.startPos, startPos);
+
+    assertOk(startPos);
 
     switch (activeTool) {
       case "rectangle":
         addElement(
           createRect({
-            x: canvas.dragInteraction.startPos.x,
-            y: canvas.dragInteraction.startPos.y,
+            x: startPos.x,
+            y: startPos.y,
             width: 0,
             height: 0,
+            rx: 0,
           })
         );
 
@@ -126,8 +130,8 @@ export function App() {
       case "circle":
         addElement(
           createCircle({
-            cx: canvas.dragInteraction.startPos.x,
-            cy: canvas.dragInteraction.startPos.y,
+            cx: startPos.x,
+            cy: startPos.y,
             r: 0,
           })
         );
@@ -135,8 +139,8 @@ export function App() {
       case "polygon":
         addElement(
           createPolygon({
-            cx: canvas.dragInteraction.startPos.x,
-            cy: canvas.dragInteraction.startPos.y,
+            cx: startPos.x,
+            cy: startPos.y,
             r: 0,
             sides: 5,
             points: [],
@@ -155,8 +159,10 @@ export function App() {
       !activeTool ||
       svgItems.length === 0 ||
       canvas.dragInteraction.startPos === null
-    )
+    ) {
       return;
+    }
+    console.log("handleMouseMove", activeTool, canvas.dragInteraction.startPos);
     const newPos = canvas.takeZoomIntoAccount(getCoordFromEvent(e));
 
     const deltaX = newPos.x - canvas.dragInteraction.startPos.x;
@@ -166,7 +172,6 @@ export function App() {
 
     switch (activeTool) {
       case "rectangle": {
-        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "rect");
 
         // Calculate new position and size
@@ -190,7 +195,6 @@ export function App() {
       }
 
       case "circle": {
-        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "circle");
 
         // Calculate new radius
@@ -203,7 +207,6 @@ export function App() {
       }
 
       case "polygon": {
-        assertOk(dragItemStateRef.current);
         assertOk(latestSvgItem.type === "polygon");
 
         // Calculate new radius
@@ -250,6 +253,7 @@ export function App() {
   const stopDrawing = () => {
     dragItemStateRef.current = null;
     setActiveTool(null); // Stop drawing
+    canvas.dragInteraction.reset();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

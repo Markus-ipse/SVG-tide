@@ -27,6 +27,7 @@ export type Rect = {
     y: number;
     width: number;
     height: number;
+    rx: number;
   } & Shared;
 };
 
