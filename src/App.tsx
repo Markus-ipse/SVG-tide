@@ -24,6 +24,7 @@ import {
   getCoords,
   getPolygonPath,
 } from "./utils/shape-utils";
+import { getCoordFromEvent } from "./utils/get-coord-from-event";
 
 type Tool = "rectangle" | "circle" | "polygon" | "grab" | null;
 
@@ -109,8 +110,6 @@ export function App() {
 
     const startPos = startDragInteraction(getCoordFromEvent(e));
 
-    console.log("handleMouseDown", canvas.dragInteraction.startPos, startPos);
-
     assertOk(startPos);
 
     switch (activeTool) {
@@ -162,7 +161,7 @@ export function App() {
     ) {
       return;
     }
-    console.log("handleMouseMove", activeTool, canvas.dragInteraction.startPos);
+
     const newPos = canvas.takeZoomIntoAccount(getCoordFromEvent(e));
 
     const deltaX = newPos.x - canvas.dragInteraction.startPos.x;
@@ -556,8 +555,3 @@ const getCursor = (activeTool: Tool) => {
       assertNever(activeTool);
   }
 };
-
-const getCoordFromEvent = (e: React.MouseEvent): Coord => ({
-  x: e.nativeEvent.offsetX,
-  y: e.nativeEvent.offsetY,
-});

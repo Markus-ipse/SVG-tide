@@ -1,8 +1,16 @@
 import { useRef, useState } from "react";
 import { canvasSize } from "../canvasSize";
 import { Coord } from "../types";
+import { assertOk } from "../utils/assert";
 
-const initialViewBox = {
+type viewBox = {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+};
+
+const initialViewBox: viewBox = {
   minX: 0,
   minY: 0,
   width: canvasSize.width,
@@ -13,43 +21,62 @@ export const useCanvas = () => {
   const dragInteractionRef = useRef<Coord | null>(null);
 
   // Initialize viewBox state
-  const [viewBox, setViewBox] = useState(initialViewBox);
+  const [viewBox, setViewBox] = useState<viewBox>(initialViewBox);
+  const [prevViewBox, setPrevViewBox] = useState<viewBox | null>(null);
 
-  // State to track if the mouse is pressed down
-  const [mouseButtonDown, setMouseButtonDown] = useState(false);
-  // State to store the initial mouse position
-  const [initialMousePosition, setInitialMousePosition] = useState({
-    x: 0,
-    y: 0,
+  const zoomLevel = canvasSize.width / viewBox.width;
+
+  const dragInteraction = {
+    startPos: dragInteractionRef.current,
+    setStartPos: (
+      startFrom: Coord,
+      opts: { ignoreZoom: boolean } = { ignoreZoom: false }
+    ) => {
+      dragInteractionRef.current = opts.ignoreZoom
+        ? startFrom
+        : takeZoomIntoAccount(startFrom);
+      return dragInteractionRef.current;
+    },
+    reset: () => {
+      dragInteractionRef.current = null;
+    },
+  };
+
+  const takeZoomIntoAccount = (coord: Coord) => ({
+    x: coord.x / zoomLevel + viewBox.minX,
+    y: coord.y / zoomLevel + viewBox.minY,
   });
 
   // Handle mouse down event
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (e.button !== 1) return; // Only handle middle mouse button
 
-    setMouseButtonDown(true);
-    setInitialMousePosition({ x: e.clientX, y: e.clientY });
+    // save the start position of the canvas
+    setPrevViewBox(viewBox);
+
+    dragInteraction.setStartPos(
+      { x: e.clientX, y: e.clientY },
+      { ignoreZoom: true }
+    );
   };
 
   // Handle mouse up event
   const handleMouseUp = () => {
-    setMouseButtonDown(false);
+    dragInteraction.reset();
+    setPrevViewBox(null);
   };
 
   // Handle mouse move event
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (mouseButtonDown) {
-      const dx = e.clientX - initialMousePosition.x;
-      const dy = e.clientY - initialMousePosition.y;
+    if (dragInteraction.startPos) {
+      const dx = e.clientX - dragInteraction.startPos.x;
+      const dy = e.clientY - dragInteraction.startPos.y;
 
       // Convert dx and dy to SVG space
-      const svgDx = dx * (viewBox.width / canvasSize.width);
-      const svgDy = dy * (viewBox.height / canvasSize.height);
+      const svgDx = dx / zoomLevel;
+      const svgDy = dy / zoomLevel;
 
       handlePan(-svgDx, -svgDy);
-
-      // Update initial position for smooth panning
-      setInitialMousePosition({ x: e.clientX, y: e.clientY });
     }
   };
 
@@ -85,8 +112,9 @@ export const useCanvas = () => {
 
   // Handle pan
   const handlePan = (dx: number, dy: number) => {
-    setViewBox((prevViewBox) => ({
-      ...prevViewBox,
+    assertOk(prevViewBox !== null);
+    setViewBox((current) => ({
+      ...current,
       minX: prevViewBox.minX + dx,
       minY: prevViewBox.minY + dy,
     }));
@@ -94,25 +122,6 @@ export const useCanvas = () => {
 
   // reset pan and zoom
   const reset = () => setViewBox(initialViewBox);
-
-  const zoomLevel = canvasSize.width / viewBox.width;
-
-  const takeZoomIntoAccount = (coord: Coord) => ({
-    x: coord.x / zoomLevel + viewBox.minX,
-    y: coord.y / zoomLevel + viewBox.minY,
-  });
-
-  const dragInteraction = {
-    startPos: dragInteractionRef.current,
-    setStartPos: (startFrom: Coord) => {
-      dragInteractionRef.current = takeZoomIntoAccount(startFrom);
-      return dragInteractionRef.current;
-    },
-    reset: () => {
-      dragInteractionRef.current = null;
-    },
-  };
-  console.log("hook!", dragInteraction.startPos);
 
   return {
     viewBox,
