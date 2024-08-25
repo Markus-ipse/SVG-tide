@@ -26,6 +26,7 @@ import { getCoordFromEvent } from "./utils/get-coord-from-event";
 import { useStore } from "./state/store";
 import type { Tool } from "./state/store";
 import { Toolbar } from "./components/Toolbar";
+import { isLeftButton, isMiddleButton } from "./utils/mouse-button";
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
@@ -70,7 +71,6 @@ export function App() {
 
   const activeTool = useStore((state) => state.activeTool);
   const setActiveTool = useStore((state) => state.setActiveTool);
-  const zoomCanvas = useStore((state) => state.zoomCanvas);
 
   const dragItemStateRef = useRef<DraggedItem | null>(null);
 
@@ -393,16 +393,20 @@ export function App() {
             viewBox={viewBoxStr}
             tabIndex={-1}
             onKeyDown={handleKeyPress}
-            onMouseDown={(e) =>
-              activeTool ? handleMouseDown(e) : canvas.handleMouseDown(e)
-            }
+            onMouseDown={(e) => {
+              if (isLeftButton(e)) {
+                handleMouseDown(e);
+              } else if (isMiddleButton(e)) {
+                canvas.startPanning(e);
+              }
+            }}
             onMouseMove={(e) =>
-              activeTool ? handleMouseMove(e) : canvas.handleMouseMove(e)
+              activeTool ? handleMouseMove(e) : canvas.handlePan(e)
             }
             onMouseUp={() =>
-              activeTool ? stopDrawing() : canvas.handleMouseUp()
+              activeTool ? stopDrawing() : canvas.stopPanning()
             }
-            onMouseLeave={canvas.handleMouseUp} // Handle case where mouse leaves the SVG area
+            onMouseLeave={canvas.stopPanning} // Handle case where mouse leaves the SVG area
             onWheel={(e) =>
               canvas.handleZoom(e.deltaY < 0, getCoordFromEvent(e))
             }
@@ -448,14 +452,14 @@ export function App() {
                       e.stopPropagation(); // Prevent canvas click event from firing (deselecting)
                     },
                     onMouseDown: (e) => {
-                      if (e.button !== 0) return; // Only handle left mouse button
+                      if (!isLeftButton(e)) return; // Only handle left mouse button
                       if (activeTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
                       setSelectedElementId(element.id);
                       startDragInteraction(getCoordFromEvent(e), element);
                       setActiveTool("grab");
                     },
                     onMouseUp: (e) => {
-                      if (e.button !== 0) return; // Only handle left mouse button
+                      if (!isLeftButton(e)) return; // Only handle left mouse button
                       if (activeTool === "grab") {
                         setActiveTool(null);
                       }
@@ -481,7 +485,7 @@ export function App() {
             {Math.round(canvas.viewBox.minX)}, {Math.round(canvas.viewBox.minY)}
             <Button
               className="border p-1 rounded-md ml-6"
-              onClick={canvas.reset}
+              onClick={canvas.resetPanZoom}
             >
               Reset pan & zoom
             </Button>

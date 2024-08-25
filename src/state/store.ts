@@ -6,7 +6,7 @@ interface AppState {
   activeTool: Tool;
   viewBox: ViewBox;
   setActiveTool: (tool: Tool) => void;
-  panCanvas: (dx: number, dy: number) => void;
+  panCanvas: (newX: number, newY: number) => void;
   zoomCanvas: (zoomAmount: number, mouse: Coord) => void;
   resetPanZoom: () => void;
 }
@@ -22,15 +22,15 @@ export const useStore = create<AppState>()((set) => ({
   activeTool: null,
   viewBox: initialViewBox,
   setActiveTool: (tool) => set({ activeTool: tool }),
-  panCanvas: (dx, dy) =>
+  panCanvas: (newX, newY) =>
     set((appState) => {
       const current = appState.viewBox;
 
       return {
         viewBox: {
           ...current,
-          minX: dx,
-          minY: dy,
+          minX: newX,
+          minY: newY,
         },
       };
     }),

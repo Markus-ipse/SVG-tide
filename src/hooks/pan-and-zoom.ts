@@ -38,9 +38,7 @@ export const useCanvas = () => {
   });
 
   // Handle mouse down event
-  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (e.button !== 1) return; // Only handle middle mouse button
-
+  const startPanning = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     // save the start position of the canvas
     setPrePanViewBox(viewBox);
 
@@ -51,26 +49,21 @@ export const useCanvas = () => {
   };
 
   // Handle mouse up event
-  const handleMouseUp = () => {
-    console.log("mouse up");
-
+  const stopPanning = () => {
     dragInteraction.reset();
     setPrePanViewBox(null);
   };
 
-  // Handle mouse move event
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+  const handlePan = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (dragInteraction.startPos) {
       assertOk(prePanViewBox !== null);
 
-      const dx = e.clientX - dragInteraction.startPos.x;
-      const dy = e.clientY - dragInteraction.startPos.y;
+      const deltaX = (dragInteraction.startPos.x - e.clientX) / zoomLevel;
+      const deltaY = (dragInteraction.startPos.y - e.clientY) / zoomLevel;
 
-      // Convert dx and dy to SVG space
-      const svgDx = dx / zoomLevel;
-      const svgDy = dy / zoomLevel;
+      const { minX: originalX, minY: originalY } = prePanViewBox;
 
-      panCanvas(prePanViewBox.minX - svgDx, prePanViewBox.minY - svgDy);
+      panCanvas(originalX + deltaX, originalY + deltaY);
     }
   };
 
@@ -82,18 +75,15 @@ export const useCanvas = () => {
     zoomCanvas(zoomAmount, mouse);
   };
 
-  // reset pan and zoom
-  const reset = () => resetPanZoom();
-
   return {
     viewBox,
     zoomLevel,
     dragInteraction,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
+    startPanning,
+    handlePan,
+    stopPanning,
     handleZoom,
     takeZoomIntoAccount,
-    reset,
+    resetPanZoom,
   };
 };
