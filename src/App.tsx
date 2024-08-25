@@ -25,8 +25,9 @@ import {
   getPolygonPath,
 } from "./utils/shape-utils";
 import { getCoordFromEvent } from "./utils/get-coord-from-event";
+import { ResizeIcon } from "./components/icons/Tools";
 
-type Tool = "rectangle" | "circle" | "polygon" | "grab" | null;
+type Tool = "rectangle" | "circle" | "polygon" | "grab" | "scale" | null;
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
@@ -146,6 +147,7 @@ export function App() {
           })
         );
         break;
+      case "scale":
       case "grab":
         break;
       default:
@@ -244,14 +246,17 @@ export function App() {
         break;
       }
 
+      case "scale": {
+      }
+
       default:
         assertNever(activeTool);
     }
   };
 
   const stopDrawing = () => {
+    console.log("stopDrawing");
     dragItemStateRef.current = null;
-    setActiveTool(null); // Stop drawing
     canvas.dragInteraction.reset();
   };
 
@@ -397,6 +402,13 @@ export function App() {
             >
               <ShapeIcon shape="polygon" />
             </Button>
+            <Button
+              className="border p-2 rounded-md"
+              toggled={activeTool === "scale"}
+              onClick={() => setActiveTool("scale")}
+            >
+              <ResizeIcon />
+            </Button>
           </div>
         </div>
         <div>
@@ -462,6 +474,13 @@ export function App() {
                   <title>{`${type} ${element.id}`}</title>
                   {createElement(type, {
                     onClick: (e) => {
+                      console.log(
+                        "clicked",
+                        element.type,
+                        element.id,
+                        "Stopping propagation"
+                      );
+
                       e.stopPropagation(); // Prevent canvas click event from firing (deselecting)
                     },
                     onMouseDown: (e) => {
@@ -473,7 +492,9 @@ export function App() {
                     },
                     onMouseUp: (e) => {
                       if (e.button !== 0) return; // Only handle left mouse button
-                      setActiveTool(null);
+                      if (activeTool === "grab") {
+                        setActiveTool(null);
+                      }
                     },
                     key: element.id,
                     ...toSvgElementAttr(element),
@@ -483,6 +504,7 @@ export function App() {
             })}
             {selectionBounds && (
               <SelectionMarker
+                type={activeTool === "scale" ? "scale" : "default"}
                 selectionBounds={selectionBounds}
                 zoomLevel={canvas.zoomLevel}
               />
@@ -551,6 +573,8 @@ const getCursor = (activeTool: Tool) => {
     case "circle":
     case "polygon":
       return "crosshair";
+    case "scale":
+      return "nwse-resize";
     default:
       assertNever(activeTool);
   }

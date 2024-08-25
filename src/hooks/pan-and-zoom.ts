@@ -62,6 +62,8 @@ export const useCanvas = () => {
 
   // Handle mouse up event
   const handleMouseUp = () => {
+    console.log("mouse up");
+
     dragInteraction.reset();
     setPrevViewBox(null);
   };
