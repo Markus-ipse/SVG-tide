@@ -2,27 +2,17 @@ import { useRef, useState } from "react";
 import { canvasSize } from "../canvasSize";
 import { Coord } from "../types";
 import { assertOk } from "../utils/assert";
-
-type viewBox = {
-  minX: number;
-  minY: number;
-  width: number;
-  height: number;
-};
-
-const initialViewBox: viewBox = {
-  minX: 0,
-  minY: 0,
-  width: canvasSize.width,
-  height: canvasSize.height,
-};
+import { useStore, type ViewBox } from "../state/store";
 
 export const useCanvas = () => {
   const dragInteractionRef = useRef<Coord | null>(null);
 
-  // Initialize viewBox state
-  const [viewBox, setViewBox] = useState<viewBox>(initialViewBox);
-  const [prevViewBox, setPrevViewBox] = useState<viewBox | null>(null);
+  const [prePanViewBox, setPrePanViewBox] = useState<ViewBox | null>(null);
+
+  const zoomCanvas = useStore((state) => state.zoomCanvas);
+  const panCanvas = useStore((state) => state.panCanvas);
+  const resetPanZoom = useStore((state) => state.resetPanZoom);
+  const viewBox = useStore((state) => state.viewBox);
 
   const zoomLevel = canvasSize.width / viewBox.width;
 
@@ -52,7 +42,7 @@ export const useCanvas = () => {
     if (e.button !== 1) return; // Only handle middle mouse button
 
     // save the start position of the canvas
-    setPrevViewBox(viewBox);
+    setPrePanViewBox(viewBox);
 
     dragInteraction.setStartPos(
       { x: e.clientX, y: e.clientY },
@@ -65,12 +55,14 @@ export const useCanvas = () => {
     console.log("mouse up");
 
     dragInteraction.reset();
-    setPrevViewBox(null);
+    setPrePanViewBox(null);
   };
 
   // Handle mouse move event
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (dragInteraction.startPos) {
+      assertOk(prePanViewBox !== null);
+
       const dx = e.clientX - dragInteraction.startPos.x;
       const dy = e.clientY - dragInteraction.startPos.y;
 
@@ -78,52 +70,20 @@ export const useCanvas = () => {
       const svgDx = dx / zoomLevel;
       const svgDy = dy / zoomLevel;
 
-      handlePan(-svgDx, -svgDy);
+      panCanvas(prePanViewBox.minX - svgDx, prePanViewBox.minY - svgDy);
     }
   };
 
   // Handle zoom
-  const handleZoom = (zoomIn: boolean, mouseX: number, mouseY: number) => {
+  const handleZoom = (zoomIn: boolean, mouse: Coord) => {
     const scaleFactor = 0.1;
     const zoomAmount = zoomIn ? 1 - scaleFactor : 1 + scaleFactor;
 
-    setViewBox((prevViewBox) => {
-      // Calculate the mouse position relative to the SVG content
-      const svgPointBeforeZoom = {
-        x: (mouseX / canvasSize.width) * prevViewBox.width + prevViewBox.minX,
-        y: (mouseY / canvasSize.height) * prevViewBox.height + prevViewBox.minY,
-      };
-
-      // Calculate the new viewBox size
-      const newWidth = prevViewBox.width * zoomAmount;
-      const newHeight = prevViewBox.height * zoomAmount;
-
-      // Calculate how much the viewBox needs to shift to keep the mouse position fixed
-      const dx = (svgPointBeforeZoom.x - prevViewBox.minX) * (1 - zoomAmount);
-      const dy = (svgPointBeforeZoom.y - prevViewBox.minY) * (1 - zoomAmount);
-
-      return {
-        ...prevViewBox,
-        minX: prevViewBox.minX + dx,
-        minY: prevViewBox.minY + dy,
-        width: newWidth,
-        height: newHeight,
-      };
-    });
-  };
-
-  // Handle pan
-  const handlePan = (dx: number, dy: number) => {
-    assertOk(prevViewBox !== null);
-    setViewBox((current) => ({
-      ...current,
-      minX: prevViewBox.minX + dx,
-      minY: prevViewBox.minY + dy,
-    }));
+    zoomCanvas(zoomAmount, mouse);
   };
 
   // reset pan and zoom
-  const reset = () => setViewBox(initialViewBox);
+  const reset = () => resetPanZoom();
 
   return {
     viewBox,

@@ -17,17 +17,15 @@ import { assertNever, assertOk } from "./utils/assert";
 import { produce } from "immer";
 import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
-import { ShapeIcon } from "./components/icons/Shapes";
-import { CursorArrowRaysIcon } from "@heroicons/react/24/outline";
 import {
   calculateDistance,
   getCoords,
   getPolygonPath,
 } from "./utils/shape-utils";
 import { getCoordFromEvent } from "./utils/get-coord-from-event";
-import { ResizeIcon } from "./components/icons/Tools";
-
-type Tool = "rectangle" | "circle" | "polygon" | "grab" | "scale" | null;
+import { useStore } from "./state/store";
+import type { Tool } from "./state/store";
+import { Toolbar } from "./components/Toolbar";
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
@@ -70,7 +68,9 @@ export function App() {
     [svgItems, selectedElementId]
   );
 
-  const [activeTool, setActiveTool] = useState<Tool>(null);
+  const activeTool = useStore((state) => state.activeTool);
+  const setActiveTool = useStore((state) => state.setActiveTool);
+  const zoomCanvas = useStore((state) => state.zoomCanvas);
 
   const dragItemStateRef = useRef<DraggedItem | null>(null);
 
@@ -247,6 +247,8 @@ export function App() {
       }
 
       case "scale": {
+        // todo: implement scaling
+        break;
       }
 
       default:
@@ -374,41 +376,7 @@ export function App() {
         <div>
           <h4 className="text-l font-semibold">Tools</h4>
           <div className="flex flex-wrap gap-2 mr-2 p-2 border-2 border-slate-200">
-            <Button
-              className="border p-2 rounded-md "
-              toggled={activeTool === null}
-              onClick={() => setActiveTool(null)}
-            >
-              <CursorArrowRaysIcon className="size-4" />
-            </Button>
-            <Button
-              className="border p-2 rounded-md"
-              toggled={activeTool === "rectangle"}
-              onClick={() => setActiveTool("rectangle")}
-            >
-              <ShapeIcon shape="rect" />
-            </Button>
-            <Button
-              className="border p-2 rounded-md"
-              toggled={activeTool === "circle"}
-              onClick={() => setActiveTool("circle")}
-            >
-              <ShapeIcon shape="circle" />
-            </Button>
-            <Button
-              className="border p-2 rounded-md"
-              toggled={activeTool === "polygon"}
-              onClick={() => setActiveTool("polygon")}
-            >
-              <ShapeIcon shape="polygon" />
-            </Button>
-            <Button
-              className="border p-2 rounded-md"
-              toggled={activeTool === "scale"}
-              onClick={() => setActiveTool("scale")}
-            >
-              <ResizeIcon />
-            </Button>
+            <Toolbar />
           </div>
         </div>
         <div>
@@ -436,11 +404,7 @@ export function App() {
             }
             onMouseLeave={canvas.handleMouseUp} // Handle case where mouse leaves the SVG area
             onWheel={(e) =>
-              canvas.handleZoom(
-                e.deltaY < 0,
-                e.nativeEvent.offsetX,
-                e.nativeEvent.offsetY
-              )
+              canvas.handleZoom(e.deltaY < 0, getCoordFromEvent(e))
             }
             onClick={() => {
               setSelectedElementId(null);
