@@ -3,9 +3,9 @@ import { canvasSize } from "../canvasSize";
 import { Coord } from "../types";
 
 interface AppState {
-  activeTool: Tool;
+  selectedTool: Tool;
   viewBox: ViewBox;
-  setActiveTool: (tool: Tool) => void;
+  setSelectedTool: (tool: Tool) => void;
   panCanvas: (newX: number, newY: number) => void;
   zoomCanvas: (zoomAmount: number, mouse: Coord) => void;
   resetPanZoom: () => void;
@@ -19,9 +19,9 @@ const initialViewBox: ViewBox = {
 };
 
 export const useStore = create<AppState>()((set) => ({
-  activeTool: null,
+  selectedTool: null,
   viewBox: initialViewBox,
-  setActiveTool: (tool) => set({ activeTool: tool }),
+  setSelectedTool: (tool) => set({ selectedTool: tool }),
   panCanvas: (newX, newY) =>
     set((appState) => {
       const current = appState.viewBox;

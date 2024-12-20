@@ -19,6 +19,7 @@ import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
 import {
   calculateDistance,
+  calculateScale,
   getCoords,
   getPolygonPath,
 } from "./utils/shape-utils";
@@ -27,11 +28,18 @@ import { useStore } from "./state/store";
 import type { Tool } from "./state/store";
 import { Toolbar } from "./components/Toolbar";
 import { isLeftButton, isMiddleButton } from "./utils/mouse-button";
+import type { ScaleHandle } from "./utils/shape-utils";
+
+type ScaleState = {
+  handle: ScaleHandle;
+  initialBounds: DOMRect;
+};
 
 type DraggedItem =
   | ({ type: "rect" } & Coord)
   | ({ type: "circle" } & Coord)
-  | ({ type: "polygon" } & Coord);
+  | ({ type: "polygon" } & Coord)
+  | ({ type: "scale" } & ScaleState);
 
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
@@ -69,8 +77,8 @@ export function App() {
     [svgItems, selectedElementId]
   );
 
-  const activeTool = useStore((state) => state.activeTool);
-  const setActiveTool = useStore((state) => state.setActiveTool);
+  const selectedTool = useStore((state) => state.selectedTool);
+  const setSelectedTool = useStore((state) => state.setSelectedTool);
 
   const dragItemStateRef = useRef<DraggedItem | null>(null);
 
@@ -106,14 +114,29 @@ export function App() {
     return startPos;
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!activeTool) return;
+  const handleScaleStart = (
+    e: React.MouseEvent,
+    handle: ScaleHandle,
+    bounds: DOMRect
+  ) => {
+    const startPos = startDragInteraction(getCoordFromEvent(e));
+    console.log(`scale from: ${handle}`, startPos, bounds);
 
+    dragItemStateRef.current = {
+      type: "scale",
+      handle,
+      initialBounds: bounds,
+    };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!selectedTool) return;
+    console.log("starting shit", selectedTool);
     const startPos = startDragInteraction(getCoordFromEvent(e));
 
     assertOk(startPos);
 
-    switch (activeTool) {
+    switch (selectedTool) {
       case "rectangle":
         addElement(
           createRect({
@@ -151,13 +174,13 @@ export function App() {
       case "grab":
         break;
       default:
-        assertNever(activeTool);
+        assertNever(selectedTool);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (
-      !activeTool ||
+      !selectedTool ||
       svgItems.length === 0 ||
       canvas.dragInteraction.startPos === null
     ) {
@@ -171,7 +194,7 @@ export function App() {
 
     const latestSvgItem = svgItems[svgItems.length - 1];
 
-    switch (activeTool) {
+    switch (selectedTool) {
       case "rectangle": {
         assertOk(latestSvgItem.type === "rect");
 
@@ -247,12 +270,46 @@ export function App() {
       }
 
       case "scale": {
-        // todo: implement scaling
+        console.log("scale", selectedElement, dragItemStateRef.current);
+        if (!selectedElement || !dragItemStateRef.current) break;
+        if (dragItemStateRef.current.type !== "scale") break;
+
+        const { handle, initialBounds } = dragItemStateRef.current;
+        const { scaleX, scaleY, originX, originY } = calculateScale(
+          initialBounds,
+          handle,
+          newPos,
+          initialBounds
+        );
+
+        switch (selectedElement.type) {
+          case "rect": {
+            const width = initialBounds.width * scaleX;
+            const height = initialBounds.height * scaleY;
+            const x = originX - (handle.includes("right") ? 0 : width);
+            const y = originY - (handle.includes("bottom") ? 0 : height);
+
+            setAttributes(selectedElement, { width, height, x, y });
+            break;
+          }
+          case "circle": {
+            const avgScale = (scaleX + scaleY) / 2;
+            const r = selectedElement.attr.r * avgScale;
+            setAttributes(selectedElement, { r });
+            break;
+          }
+          case "polygon": {
+            const avgScale = (scaleX + scaleY) / 2;
+            const r = selectedElement.attr.r * avgScale;
+            setAttributes(selectedElement, { r });
+            break;
+          }
+        }
         break;
       }
 
       default:
-        assertNever(activeTool);
+        assertNever(selectedTool);
     }
   };
 
@@ -384,7 +441,7 @@ export function App() {
             style={{
               backgroundColor: "#EEE",
               touchAction: "none",
-              cursor: getCursor(activeTool),
+              cursor: getCursor(selectedTool),
             }}
             ref={canvasRef}
             width={canvasSize.width}
@@ -401,10 +458,10 @@ export function App() {
               }
             }}
             onMouseMove={(e) =>
-              activeTool ? handleMouseMove(e) : canvas.handlePan(e)
+              selectedTool ? handleMouseMove(e) : canvas.handlePan(e)
             }
             onMouseUp={() =>
-              activeTool ? stopDrawing() : canvas.stopPanning()
+              selectedTool ? stopDrawing() : canvas.stopPanning()
             }
             onMouseLeave={canvas.stopPanning} // Handle case where mouse leaves the SVG area
             onWheel={(e) =>
@@ -453,15 +510,15 @@ export function App() {
                     },
                     onMouseDown: (e) => {
                       if (!isLeftButton(e)) return; // Only handle left mouse button
-                      if (activeTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
+                      if (selectedTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
                       setSelectedElementId(element.id);
                       startDragInteraction(getCoordFromEvent(e), element);
-                      setActiveTool("grab");
+                      setSelectedTool("grab");
                     },
                     onMouseUp: (e) => {
                       if (!isLeftButton(e)) return; // Only handle left mouse button
-                      if (activeTool === "grab") {
-                        setActiveTool(null);
+                      if (selectedTool === "grab") {
+                        setSelectedTool(null);
                       }
                     },
                     key: element.id,
@@ -472,9 +529,14 @@ export function App() {
             })}
             {selectionBounds && (
               <SelectionMarker
-                type={activeTool === "scale" ? "scale" : "default"}
+                type={selectedTool === "scale" ? "scale" : "default"}
                 selectionBounds={selectionBounds}
                 zoomLevel={canvas.zoomLevel}
+                onHandleMouseDown={(e, handle) => {
+                  if (selectedTool === "scale") {
+                    handleScaleStart(e, handle, selectionBounds);
+                  }
+                }}
               />
             )}
           </svg>
@@ -531,8 +593,8 @@ const toSvgElementAttr = (item: SvgItem): React.SVGProps<SVGElement> => {
   }
 };
 
-const getCursor = (activeTool: Tool) => {
-  switch (activeTool) {
+const getCursor = (selectedTool: Tool) => {
+  switch (selectedTool) {
     case null:
       return "default";
     case "grab":
@@ -544,6 +606,6 @@ const getCursor = (activeTool: Tool) => {
     case "scale":
       return "nwse-resize";
     default:
-      assertNever(activeTool);
+      assertNever(selectedTool);
   }
 };

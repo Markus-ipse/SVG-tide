@@ -1,13 +1,18 @@
+import React from "react";
+import type { ScaleHandle } from "../utils/shape-utils";
+
 type Props = {
   selectionBounds: DOMRect;
   zoomLevel: number;
   type: "default" | "scale";
+  onHandleMouseDown?: (e: React.MouseEvent, handle: ScaleHandle) => void;
 };
 
 export const SelectionMarker = ({
   selectionBounds: bounds,
   zoomLevel,
   type = "default",
+  onHandleMouseDown,
 }: Props) => {
   const handleCoords = type === "scale" ? getHandleCoords(bounds) : [];
 
@@ -46,8 +51,9 @@ export const SelectionMarker = ({
         <g key={label}>
           <title>{label}</title>
           <rect
-            onClick={(e) => {
-              console.log(label, e);
+            onMouseDown={(e) => {
+              // e.stopPropagation();
+              onHandleMouseDown?.(e, label as ScaleHandle);
             }}
             x={pos.x - unZoomed(styles.handleSize / 2)}
             y={pos.y - unZoomed(styles.handleSize / 2)}
@@ -56,6 +62,7 @@ export const SelectionMarker = ({
             fill="white"
             stroke="black"
             strokeWidth={unZoomed(1)}
+            style={{ cursor: getHandleCursor(label as ScaleHandle) }}
           />
         </g>
       ))}
@@ -110,6 +117,20 @@ function getHandleCoords(bounds: DOMRect) {
       },
     },
   ];
+}
+
+function getHandleCursor(handle: ScaleHandle): string {
+  switch (handle) {
+    case "top-left":
+    case "bottom-right":
+      return "nwse-resize";
+    case "top-right":
+    case "bottom-left":
+      return "nesw-resize";
+    case "middle-left":
+    case "middle-right":
+      return "ew-resize";
+  }
 }
 
 const styles = { handleSize: 24, strokeWidth: 2, dashLength: 5 };

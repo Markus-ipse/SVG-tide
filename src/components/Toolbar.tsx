@@ -5,43 +5,43 @@ import { useStore } from "../state/store";
 import { ResizeIcon } from "./icons/Tools";
 
 export const Toolbar = () => {
-  const activeTool = useStore((state) => state.activeTool);
-  const setActiveTool = useStore((state) => state.setActiveTool);
+  const selectedTool = useStore((state) => state.selectedTool);
+  const setSelectedTool = useStore((state) => state.setSelectedTool);
 
   return (
     <>
       <Button
         className="border p-2 rounded-md "
-        toggled={activeTool === null}
-        onClick={() => setActiveTool(null)}
+        toggled={selectedTool === null}
+        onClick={() => setSelectedTool(null)}
       >
         <CursorArrowRaysIcon className="size-4" />
       </Button>
       <Button
         className="border p-2 rounded-md"
-        toggled={activeTool === "rectangle"}
-        onClick={() => setActiveTool("rectangle")}
+        toggled={selectedTool === "rectangle"}
+        onClick={() => setSelectedTool("rectangle")}
       >
         <ShapeIcon shape="rect" />
       </Button>
       <Button
         className="border p-2 rounded-md"
-        toggled={activeTool === "circle"}
-        onClick={() => setActiveTool("circle")}
+        toggled={selectedTool === "circle"}
+        onClick={() => setSelectedTool("circle")}
       >
         <ShapeIcon shape="circle" />
       </Button>
       <Button
         className="border p-2 rounded-md"
-        toggled={activeTool === "polygon"}
-        onClick={() => setActiveTool("polygon")}
+        toggled={selectedTool === "polygon"}
+        onClick={() => setSelectedTool("polygon")}
       >
         <ShapeIcon shape="polygon" />
       </Button>
       <Button
         className="border p-2 rounded-md"
-        toggled={activeTool === "scale"}
-        onClick={() => setActiveTool("scale")}
+        toggled={selectedTool === "scale"}
+        onClick={() => setSelectedTool("scale")}
       >
         <ResizeIcon />
       </Button>
