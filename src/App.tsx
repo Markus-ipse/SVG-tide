@@ -30,17 +30,6 @@ import { Toolbar } from "./components/Toolbar";
 import { isLeftButton, isMiddleButton } from "./utils/mouse-button";
 import type { ScaleHandle } from "./utils/shape-utils";
 
-type ScaleState = {
-  handle: ScaleHandle;
-  initialBounds: DOMRect;
-};
-
-type DraggedItem =
-  | ({ type: "rect" } & Coord)
-  | ({ type: "circle" } & Coord)
-  | ({ type: "polygon" } & Coord)
-  | ({ type: "scale" } & ScaleState);
-
 export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
@@ -80,36 +69,15 @@ export function App() {
   const selectedTool = useStore((state) => state.selectedTool);
   const setSelectedTool = useStore((state) => state.setSelectedTool);
 
-  const dragItemStateRef = useRef<DraggedItem | null>(null);
+  const preInteractionItemState = useRef<SvgItem | null>(null);
 
   const canvas = useCanvas();
 
   const startDragInteraction = (mouseCoord: Coord, svgItem?: SvgItem) => {
     const startPos = canvas.dragInteraction.setStartPos(mouseCoord);
 
-    let itemPos: DraggedItem | null = null;
-
-    if (svgItem?.type === "rect") {
-      itemPos = {
-        type: svgItem.type,
-        x: svgItem.attr.x,
-        y: svgItem.attr.y,
-      };
-    } else if (svgItem?.type === "circle") {
-      itemPos = {
-        type: svgItem.type,
-        x: svgItem.attr.cx,
-        y: svgItem.attr.cy,
-      };
-    } else if (svgItem?.type === "polygon") {
-      itemPos = {
-        type: svgItem.type,
-        x: svgItem.attr.cx,
-        y: svgItem.attr.cy,
-      };
-    }
-
-    dragItemStateRef.current = itemPos;
+    preInteractionItemState.current =
+      (svgItem && cloneElement(svgItem)) ?? null;
 
     return startPos;
   };
@@ -119,14 +87,12 @@ export function App() {
     handle: ScaleHandle,
     bounds: DOMRect
   ) => {
-    const startPos = startDragInteraction(getCoordFromEvent(e));
+    assertOk(selectedElement);
+    const startPos = startDragInteraction(
+      getCoordFromEvent(e),
+      selectedElement
+    );
     console.log(`scale from: ${handle}`, startPos, bounds);
-
-    dragItemStateRef.current = {
-      type: "scale",
-      handle,
-      initialBounds: bounds,
-    };
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -179,18 +145,19 @@ export function App() {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    console.log(canvas.dragInteraction.startPos);
     if (
       !selectedTool ||
       svgItems.length === 0 ||
-      canvas.dragInteraction.startPos === null
+      canvas.dragInteraction.startPos.current === null
     ) {
       return;
     }
 
     const newPos = canvas.takeZoomIntoAccount(getCoordFromEvent(e));
 
-    const deltaX = newPos.x - canvas.dragInteraction.startPos.x;
-    const deltaY = newPos.y - canvas.dragInteraction.startPos.y;
+    const deltaX = newPos.x - canvas.dragInteraction.startPos.current.x;
+    const deltaY = newPos.y - canvas.dragInteraction.startPos.current.y;
 
     const latestSvgItem = svgItems[svgItems.length - 1];
 
@@ -204,8 +171,14 @@ export function App() {
 
         // if dragging to the right or down, the rectangle will start at the initial position and just get wider/taller
         // if dragging to the left or up, the rectangle will get wider/taller AND move its starting position to the cursor position
-        const minX = Math.min(newPos.x, canvas.dragInteraction.startPos.x);
-        const minY = Math.min(newPos.y, canvas.dragInteraction.startPos.y);
+        const minX = Math.min(
+          newPos.x,
+          canvas.dragInteraction.startPos.current.x
+        );
+        const minY = Math.min(
+          newPos.y,
+          canvas.dragInteraction.startPos.current.y
+        );
 
         // Update the rectangle's attributes
         setAttributes(latestSvgItem, {
@@ -245,24 +218,24 @@ export function App() {
 
       case "grab": {
         if (selectedElement) {
-          const preDragPos = dragItemStateRef.current;
+          const preDragPos = preInteractionItemState.current;
           assertOk(preDragPos);
           assertOk(selectedElement.type === preDragPos.type);
 
           if (preDragPos.type == "rect") {
             setAttributes(selectedElement, {
-              x: preDragPos.x + deltaX,
-              y: preDragPos.y + deltaY,
+              x: preDragPos.attr.x + deltaX,
+              y: preDragPos.attr.y + deltaY,
             });
           } else if (preDragPos.type == "circle") {
             setAttributes(selectedElement, {
-              cx: preDragPos.x + deltaX,
-              cy: preDragPos.y + deltaY,
+              cx: preDragPos.attr.cx + deltaX,
+              cy: preDragPos.attr.cy + deltaY,
             });
           } else if (preDragPos.type == "polygon") {
             setAttributes(selectedElement, {
-              cx: preDragPos.x + deltaX,
-              cy: preDragPos.y + deltaY,
+              cx: preDragPos.attr.cx + deltaX,
+              cy: preDragPos.attr.cy + deltaY,
             });
           }
         }
@@ -270,11 +243,10 @@ export function App() {
       }
 
       case "scale": {
-        console.log("scale", selectedElement, dragItemStateRef.current);
-        if (!selectedElement || !dragItemStateRef.current) break;
-        if (dragItemStateRef.current.type !== "scale") break;
+        console.log("scale", selectedElement, preInteractionItemState.current);
+        if (!selectedElement || !preInteractionItemState.current) break;
 
-        const { handle, initialBounds } = dragItemStateRef.current;
+        const { handle, initialBounds } = preInteractionItemState.current;
         const { scaleX, scaleY, originX, originY } = calculateScale(
           initialBounds,
           handle,
@@ -315,7 +287,7 @@ export function App() {
 
   const stopDrawing = () => {
     console.log("stopDrawing");
-    dragItemStateRef.current = null;
+    preInteractionItemState.current = null;
     canvas.dragInteraction.reset();
   };
 
@@ -381,6 +353,11 @@ export function App() {
         return el;
       })
     );
+  };
+
+  // Clone SvgItem
+  const cloneElement = <T extends SvgItem>(svgItem: T): T => {
+    return { ...svgItem, attr: { ...svgItem.attr } };
   };
 
   const reorderElement = (currentIndex: number, newIndex: number) => {

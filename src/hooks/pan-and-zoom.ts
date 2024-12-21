@@ -17,17 +17,21 @@ export const useCanvas = () => {
   const zoomLevel = canvasSize.width / viewBox.width;
 
   const dragInteraction = {
-    startPos: dragInteractionRef.current,
+    startPos: dragInteractionRef,
     setStartPos: (
       startFrom: Coord,
       opts: { ignoreZoom: boolean } = { ignoreZoom: false }
     ) => {
+      console.log("set StartPos", startFrom, opts);
+
       dragInteractionRef.current = opts.ignoreZoom
         ? startFrom
         : takeZoomIntoAccount(startFrom);
       return dragInteractionRef.current;
     },
     reset: () => {
+      console.log("reset StartPos");
+
       dragInteractionRef.current = null;
     },
   };
@@ -55,11 +59,13 @@ export const useCanvas = () => {
   };
 
   const handlePan = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-    if (dragInteraction.startPos) {
+    if (dragInteraction.startPos.current) {
       assertOk(prePanViewBox !== null);
 
-      const deltaX = (dragInteraction.startPos.x - e.clientX) / zoomLevel;
-      const deltaY = (dragInteraction.startPos.y - e.clientY) / zoomLevel;
+      const deltaX =
+        (dragInteraction.startPos.current.x - e.clientX) / zoomLevel;
+      const deltaY =
+        (dragInteraction.startPos.current.y - e.clientY) / zoomLevel;
 
       const { minX: originalX, minY: originalY } = prePanViewBox;
 
