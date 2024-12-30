@@ -22,7 +22,7 @@ export const useCanvas = () => {
       startFrom: Coord,
       opts: { ignoreZoom: boolean } = { ignoreZoom: false }
     ) => {
-      console.log("set StartPos", startFrom, opts);
+      console.log("useCanvas > set StartPos", startFrom, opts);
 
       dragInteractionRef.current = opts.ignoreZoom
         ? startFrom
@@ -30,7 +30,7 @@ export const useCanvas = () => {
       return dragInteractionRef.current;
     },
     reset: () => {
-      console.log("reset StartPos");
+      console.log("useCanvas > reset StartPos");
 
       dragInteractionRef.current = null;
     },

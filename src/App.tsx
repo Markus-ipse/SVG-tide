@@ -19,7 +19,6 @@ import { createCircle, createPolygon, createRect } from "./utils/shape-factory";
 import { SelectionMarker } from "./components/SelectionMarker";
 import {
   calculateDistance,
-  calculateScale,
   getCoords,
   getPolygonPath,
 } from "./utils/shape-utils";
@@ -78,6 +77,7 @@ export function App() {
 
     preInteractionItemState.current =
       (svgItem && cloneElement(svgItem)) ?? null;
+    console.log("startDragInteraction", preInteractionItemState.current);
 
     return startPos;
   };
@@ -92,12 +92,17 @@ export function App() {
       getCoordFromEvent(e),
       selectedElement
     );
-    console.log(`scale from: ${handle}`, startPos, bounds);
+    console.log(
+      `selectBox > scale-handle click - scale from: ${handle}`,
+      startPos,
+      bounds
+    );
+    e.stopPropagation();
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!selectedTool) return;
-    console.log("starting shit", selectedTool);
+    console.log(`SVG => handleMouseDown [${selectedTool}]`);
     const startPos = startDragInteraction(getCoordFromEvent(e));
 
     assertOk(startPos);
@@ -145,7 +150,6 @@ export function App() {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    console.log(canvas.dragInteraction.startPos);
     if (
       !selectedTool ||
       svgItems.length === 0 ||
@@ -243,40 +247,34 @@ export function App() {
       }
 
       case "scale": {
-        console.log("scale", selectedElement, preInteractionItemState.current);
-        if (!selectedElement || !preInteractionItemState.current) break;
-
-        const { handle, initialBounds } = preInteractionItemState.current;
-        const { scaleX, scaleY, originX, originY } = calculateScale(
-          initialBounds,
-          handle,
-          newPos,
-          initialBounds
+        console.log(
+          "SVG => handleMouseMove > scale",
+          selectedElement,
+          preInteractionItemState.current
         );
-
-        switch (selectedElement.type) {
+        if (!selectedElement || !preInteractionItemState.current) break;
+        switch (preInteractionItemState.current.type) {
           case "rect": {
-            const width = initialBounds.width * scaleX;
-            const height = initialBounds.height * scaleY;
-            const x = originX - (handle.includes("right") ? 0 : width);
-            const y = originY - (handle.includes("bottom") ? 0 : height);
+            // Define the calculateScaleRect function or replace with the correct function name
+            // Calculate new position and size
+            const newWidth =
+              preInteractionItemState.current.attr.width + deltaX;
+            const newHeight =
+              preInteractionItemState.current.attr.height + deltaY;
 
-            setAttributes(selectedElement, { width, height, x, y });
-            break;
-          }
-          case "circle": {
-            const avgScale = (scaleX + scaleY) / 2;
-            const r = selectedElement.attr.r * avgScale;
-            setAttributes(selectedElement, { r });
-            break;
-          }
-          case "polygon": {
-            const avgScale = (scaleX + scaleY) / 2;
-            const r = selectedElement.attr.r * avgScale;
-            setAttributes(selectedElement, { r });
-            break;
+            const minX = preInteractionItemState.current.attr.x;
+            const minY = preInteractionItemState.current.attr.y;
+
+            // Update the rectangle's attributes
+            setAttributes(selectedElement, {
+              x: minX,
+              y: minY,
+              width: newWidth,
+              height: newHeight,
+            });
           }
         }
+
         break;
       }
 
@@ -286,7 +284,7 @@ export function App() {
   };
 
   const stopDrawing = () => {
-    console.log("stopDrawing");
+    console.log("SVG => mouseUp (stopDrawing)");
     preInteractionItemState.current = null;
     canvas.dragInteraction.reset();
   };
@@ -477,7 +475,7 @@ export function App() {
                   {createElement(type, {
                     onClick: (e) => {
                       console.log(
-                        "clicked",
+                        "elem clicked",
                         element.type,
                         element.id,
                         "Stopping propagation"

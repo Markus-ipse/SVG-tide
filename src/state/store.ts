@@ -9,6 +9,8 @@ interface AppState {
   interactionStart: Coord | null;
   setSelectedTool: (tool: Tool) => void;
   setToolIsActive: (isActive: boolean) => void;
+  setInteractionStart: (coord: Coord) => void;
+  clearInteractionStart: () => void;
   panCanvas: (newX: number, newY: number) => void;
   zoomCanvas: (zoomAmount: number, mouse: Coord) => void;
   resetPanZoom: () => void;
@@ -26,6 +28,8 @@ export const useStore = create<AppState>()((set) => ({
   toolIsActive: false,
   viewBox: initialViewBox,
   interactionStart: null,
+  setInteractionStart: (coord) => set({ interactionStart: coord }),
+  clearInteractionStart: () => set({ interactionStart: null }),
   setSelectedTool: (tool) => set({ selectedTool: tool }),
   setToolIsActive: (isActive) => set({ toolIsActive: isActive }),
   panCanvas: (newX, newY) =>

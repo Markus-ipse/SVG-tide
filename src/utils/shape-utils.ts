@@ -60,34 +60,3 @@ export type ScaleHandle =
   | "middle-right"
   | "bottom-left"
   | "bottom-right";
-
-export const calculateScale = (
-  bounds: DOMRect,
-  handle: ScaleHandle,
-  mousePos: Coord,
-  initialBounds: DOMRect
-): { scaleX: number; scaleY: number; originX: number; originY: number } => {
-  // Determine the scaling origin based on the handle
-  const originX = handle.includes("right") ? bounds.x : bounds.x + bounds.width;
-  const originY = handle.includes("bottom")
-    ? bounds.y
-    : bounds.y + bounds.height;
-
-  // Calculate the distances from origin to mouse
-  const currentDistX = Math.abs(mousePos.x - originX);
-  const currentDistY = Math.abs(mousePos.y - originY);
-
-  // Calculate initial distances from origin to handle
-  const initialWidth = handle.includes("middle")
-    ? initialBounds.width / 2
-    : initialBounds.width;
-  const initialHeight = handle.includes("middle")
-    ? initialBounds.height
-    : initialBounds.height;
-
-  // Calculate scale factors
-  const scaleX = handle.includes("middle") ? 1 : currentDistX / initialWidth;
-  const scaleY = handle.includes("middle") ? 1 : currentDistY / initialHeight;
-
-  return { scaleX, scaleY, originX, originY };
-};
