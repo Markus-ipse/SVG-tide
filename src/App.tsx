@@ -33,40 +33,24 @@ export function App() {
   const elementsRef = useRef<Map<SvgItem, SVGGElement> | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
 
-  const [svgItems, setSvgItems] = useState<SvgItem[]>(() => [
-    createPolygon({
-      cx: 150,
-      cy: 150,
-      r: 30,
-      sides: 6,
-      points: [],
-      fill: "#00dd00",
-      fillOpacity: 1,
-      stroke: "#800080",
-    }),
-    createCircle({ cx: 150, cy: 150, r: 50, fill: "#FF0000", fillOpacity: 1 }),
-    createRect({
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 100,
-      fill: "#BBC42A",
-      fillOpacity: 1,
-      strokeWidth: 0,
-      rx: 10,
-    }),
-  ]);
-
-  const [selectedElementId, setSelectedElementId] = useState<number | null>(1);
+  const svgItems = useStore((state) => state.svgItems);
+  const selectedElementId = useStore((state) => state.selectedSvgItemId);
   const [selectionBounds, setSelectionBounds] = useState<DOMRect | null>(null);
 
-  const selectedElement = useMemo(
+  const selectedSvgItem = useMemo(
     () => svgItems.find((el) => el.id === selectedElementId) ?? null,
     [svgItems, selectedElementId]
   );
 
   const selectedTool = useStore((state) => state.selectedTool);
   const setSelectedTool = useStore((state) => state.setSelectedTool);
+
+  const setSelectedSvgItem = useStore((state) => state.setSelectedSvgItem);
+  const addSvgItem = useStore((state) => state.addSvgItem);
+  const removeSvgItem = useStore((state) => state.removeSvgItem);
+  const reorderSvgItem = useStore((state) => state.reorderSvgItem);
+
+  const setAttributes = useStore((state) => state.setAttributes);
 
   const preInteractionItemState = useRef<SvgItem | null>(null);
 
@@ -87,10 +71,10 @@ export function App() {
     handle: ScaleHandle,
     bounds: DOMRect
   ) => {
-    assertOk(selectedElement);
+    assertOk(selectedSvgItem);
     const startPos = startDragInteraction(
       getCoordFromEvent(e),
-      selectedElement
+      selectedSvgItem
     );
     console.log(
       `selectBox > scale-handle click - scale from: ${handle}`,
@@ -99,7 +83,9 @@ export function App() {
     );
     e.stopPropagation();
   };
+  console.log("SVG => render", selectedSvgItem?.attr);
 
+  // mouse down on SVG canvas
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!selectedTool) return;
     console.log(`SVG => handleMouseDown [${selectedTool}]`);
@@ -109,7 +95,7 @@ export function App() {
 
     switch (selectedTool) {
       case "rectangle":
-        addElement(
+        addSvgItem(
           createRect({
             x: startPos.x,
             y: startPos.y,
@@ -122,7 +108,7 @@ export function App() {
         break;
 
       case "circle":
-        addElement(
+        addSvgItem(
           createCircle({
             cx: startPos.x,
             cy: startPos.y,
@@ -131,7 +117,7 @@ export function App() {
         );
         break;
       case "polygon":
-        addElement(
+        addSvgItem(
           createPolygon({
             cx: startPos.x,
             cy: startPos.y,
@@ -152,7 +138,7 @@ export function App() {
   const handleMouseMove = (e: React.MouseEvent) => {
     if (
       !selectedTool ||
-      svgItems.length === 0 ||
+      // svgItems.length === 0 ||
       canvas.dragInteraction.startPos.current === null
     ) {
       return;
@@ -221,23 +207,23 @@ export function App() {
       }
 
       case "grab": {
-        if (selectedElement) {
+        if (selectedSvgItem) {
           const preDragPos = preInteractionItemState.current;
           assertOk(preDragPos);
-          assertOk(selectedElement.type === preDragPos.type);
+          assertOk(selectedSvgItem.type === preDragPos.type);
 
           if (preDragPos.type == "rect") {
-            setAttributes(selectedElement, {
+            setAttributes(selectedSvgItem, {
               x: preDragPos.attr.x + deltaX,
               y: preDragPos.attr.y + deltaY,
             });
           } else if (preDragPos.type == "circle") {
-            setAttributes(selectedElement, {
+            setAttributes(selectedSvgItem, {
               cx: preDragPos.attr.cx + deltaX,
               cy: preDragPos.attr.cy + deltaY,
             });
           } else if (preDragPos.type == "polygon") {
-            setAttributes(selectedElement, {
+            setAttributes(selectedSvgItem, {
               cx: preDragPos.attr.cx + deltaX,
               cy: preDragPos.attr.cy + deltaY,
             });
@@ -249,10 +235,10 @@ export function App() {
       case "scale": {
         console.log(
           "SVG => handleMouseMove > scale",
-          selectedElement,
+          selectedSvgItem,
           preInteractionItemState.current
         );
-        if (!selectedElement || !preInteractionItemState.current) break;
+        if (!selectedSvgItem || !preInteractionItemState.current) break;
         switch (preInteractionItemState.current.type) {
           case "rect": {
             // Define the calculateScaleRect function or replace with the correct function name
@@ -266,7 +252,7 @@ export function App() {
             const minY = preInteractionItemState.current.attr.y;
 
             // Update the rectangle's attributes
-            setAttributes(selectedElement, {
+            setAttributes(selectedSvgItem, {
               x: minX,
               y: minY,
               width: newWidth,
@@ -290,24 +276,24 @@ export function App() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (!selectedElement) return;
+    if (!selectedSvgItem) return;
 
     if (e.key === "Delete" || e.key === "x") {
-      removeElement(selectedElement.id);
-      setSelectedElementId(null);
+      removeSvgItem(selectedSvgItem.id);
+      setSelectedSvgItem(null);
       return;
     }
 
     if (e.key === "f" || e.key === "b") {
       const delta = e.key === "b" ? 1 : -1;
       const currentIndex = svgItems.findIndex(
-        (el) => el.id === selectedElement.id
+        (el) => el.id === selectedSvgItem.id
       );
       const newIndex = currentIndex + delta;
 
       if (newIndex < 0 || newIndex >= svgItems.length) return;
 
-      reorderElement(currentIndex, newIndex);
+      reorderSvgItem(currentIndex, newIndex);
     }
   };
 
@@ -315,55 +301,20 @@ export function App() {
   useWheelEventOverrides(canvasRef);
 
   useLayoutEffect(() => {
-    const domNode = selectedElement && getMap().get(selectedElement);
+    const domNode = selectedSvgItem && getMap().get(selectedSvgItem);
+    console.log("useLayoutEffect", selectedSvgItem, domNode);
+
     if (!domNode) {
       setSelectionBounds(null);
       return;
     }
 
     setSelectionBounds(domNode.getBBox());
-  }, [selectedElement]);
-
-  const addElement = (elem: SvgItem) => {
-    setSvgItems((elements) => [...elements, elem]);
-    return elem;
-  };
-
-  const removeElement = (id: number) => {
-    setSvgItems((elements) => elements.filter((el) => el.id !== id));
-  };
-
-  const setAttributes = <
-    T extends SvgItem["type"],
-    U extends Extract<SvgItem, { type: T }>,
-  >(
-    svgItem: { id: number; type: T },
-    newAttr: Partial<U["attr"]>
-  ) => {
-    setSvgItems((elements) =>
-      elements.map((el) => {
-        if (el.id === svgItem.id) {
-          return produce(el, (draft) => {
-            draft.attr = { ...draft.attr, ...newAttr };
-          });
-        }
-
-        return el;
-      })
-    );
-  };
+  }, [selectedSvgItem, svgItems]);
 
   // Clone SvgItem
   const cloneElement = <T extends SvgItem>(svgItem: T): T => {
     return { ...svgItem, attr: { ...svgItem.attr } };
-  };
-
-  const reorderElement = (currentIndex: number, newIndex: number) => {
-    const result = Array.from(svgItems);
-    const [removed] = result.splice(currentIndex, 1);
-    result.splice(newIndex, 0, removed);
-
-    setSvgItems(result);
   };
 
   function getMap() {
@@ -443,7 +394,7 @@ export function App() {
               canvas.handleZoom(e.deltaY < 0, getCoordFromEvent(e))
             }
             onClick={() => {
-              setSelectedElementId(null);
+              setSelectedSvgItem(null);
             }}
           >
             <rect
@@ -455,29 +406,29 @@ export function App() {
               fill="#FFF"
             />
 
-            {svgItems.toReversed().map((element) => {
-              const { type } = element;
+            {svgItems.toReversed().map((svgItem) => {
+              const { type } = svgItem;
 
               return (
                 <g
-                  id={element.id.toString()}
-                  key={element.id}
+                  id={svgItem.id.toString()}
+                  key={svgItem.id}
                   ref={(node) => {
                     const map = getMap();
                     if (node) {
-                      map.set(element, node);
+                      map.set(svgItem, node);
                     } else {
-                      map.delete(element);
+                      map.delete(svgItem);
                     }
                   }}
                 >
-                  <title>{`${type} ${element.id}`}</title>
+                  <title>{`${type} ${svgItem.id}`}</title>
                   {createElement(type, {
                     onClick: (e) => {
                       console.log(
                         "elem clicked",
-                        element.type,
-                        element.id,
+                        svgItem.type,
+                        svgItem.id,
                         "Stopping propagation"
                       );
 
@@ -486,8 +437,8 @@ export function App() {
                     onMouseDown: (e) => {
                       if (!isLeftButton(e)) return; // Only handle left mouse button
                       if (selectedTool) return; // Don't start dragging if we're drawing a shape (or already dragging)
-                      setSelectedElementId(element.id);
-                      startDragInteraction(getCoordFromEvent(e), element);
+                      setSelectedSvgItem(svgItem);
+                      startDragInteraction(getCoordFromEvent(e), svgItem);
                       setSelectedTool("grab");
                     },
                     onMouseUp: (e) => {
@@ -496,8 +447,8 @@ export function App() {
                         setSelectedTool(null);
                       }
                     },
-                    key: element.id,
-                    ...toSvgElementAttr(element),
+                    key: svgItem.id,
+                    ...toSvgElementAttr(svgItem),
                   })}
                 </g>
               );
@@ -531,13 +482,13 @@ export function App() {
         <div className="ml-2 w-[24rem]">
           <ElementList
             elements={svgItems}
-            onRemove={removeElement}
-            onReorder={reorderElement}
-            onSelect={setSelectedElementId}
+            onRemove={removeSvgItem}
+            onReorder={reorderSvgItem}
+            onSelect={setSelectedSvgItem}
             className="mb-2"
-            selectedElementId={selectedElementId}
+            selectedSvgItem={selectedSvgItem}
           />
-          <AttributeEditor svgItem={selectedElement} onChange={setAttributes} />
+          <AttributeEditor svgItem={selectedSvgItem} onChange={setAttributes} />
         </div>
       </div>
     </div>

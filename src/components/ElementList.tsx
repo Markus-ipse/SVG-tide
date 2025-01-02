@@ -8,16 +8,16 @@ import {
 
 interface Props {
   elements: SvgItem[];
-  selectedElementId: number | null;
+  selectedSvgItem: SvgItem | null;
   className?: string;
-  onSelect: (elementId: number) => void;
+  onSelect: (svgItem: SvgItem) => void;
   onRemove: (id: number) => void;
   onReorder: (currentIndex: number, newIndex: number) => void;
 }
 
 export const ElementList = ({
   elements,
-  selectedElementId,
+  selectedSvgItem,
   onRemove,
   onReorder,
   onSelect,
@@ -47,7 +47,7 @@ export const ElementList = ({
                   key={element.id}
                   index={index}
                   element={element}
-                  isSelected={selectedElementId === element.id}
+                  isSelected={selectedSvgItem?.id === element.id}
                   onRemove={onRemove}
                   onSelect={onSelect}
                 />

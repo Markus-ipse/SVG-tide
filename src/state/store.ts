@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { canvasSize } from "../canvasSize";
-import { Coord } from "../types";
+import { Coord, SvgItem } from "../types";
+import {
+  createCircle,
+  createPolygon,
+  createRect,
+} from "../utils/shape-factory";
+import { produce } from "immer";
 
 interface AppState {
   selectedTool: Tool;
@@ -14,6 +20,19 @@ interface AppState {
   panCanvas: (newX: number, newY: number) => void;
   zoomCanvas: (zoomAmount: number, mouse: Coord) => void;
   resetPanZoom: () => void;
+  svgItems: SvgItem[];
+  selectedSvgItemId: number | null;
+  addSvgItem: (elem: SvgItem) => void;
+  removeSvgItem: (id: number) => void;
+  setSelectedSvgItem: (svgItem: SvgItem | null) => void;
+  setAttributes: <
+    T extends SvgItem["type"],
+    U extends Extract<SvgItem, { type: T }>,
+  >(
+    svgItem: { id: number; type: T },
+    newAttr: Partial<U["attr"]>
+  ) => void;
+  reorderSvgItem: (currentIndex: number, newIndex: number) => void;
 }
 
 const initialViewBox: ViewBox = {
@@ -23,7 +42,31 @@ const initialViewBox: ViewBox = {
   height: canvasSize.height,
 };
 
-export const useStore = create<AppState>()((set) => ({
+const initialSvgItems: SvgItem[] = [
+  createPolygon({
+    cx: 150,
+    cy: 150,
+    r: 30,
+    sides: 6,
+    points: [],
+    fill: "#00dd00",
+    fillOpacity: 1,
+    stroke: "#800080",
+  }),
+  createCircle({ cx: 150, cy: 150, r: 50, fill: "#FF0000", fillOpacity: 1 }),
+  createRect({
+    x: 50,
+    y: 50,
+    width: 200,
+    height: 100,
+    fill: "#BBC42A",
+    fillOpacity: 1,
+    strokeWidth: 0,
+    rx: 10,
+  }),
+];
+
+export const useStore = create<AppState>()((set, get) => ({
   selectedTool: null,
   toolIsActive: false,
   viewBox: initialViewBox,
@@ -76,6 +119,36 @@ export const useStore = create<AppState>()((set) => ({
       };
     }),
   resetPanZoom: () => set({ viewBox: initialViewBox }),
+  svgItems: initialSvgItems,
+  selectedSvgItemId: null,
+  addSvgItem: (elem) =>
+    set((state) => ({ svgItems: [...state.svgItems, elem] })),
+  removeSvgItem: (id) =>
+    set((state) => ({
+      svgItems: state.svgItems.filter((el) => el.id !== id),
+      selectedSvgItemId:
+        state.selectedSvgItemId === id ? null : state.selectedSvgItemId,
+    })),
+  setSelectedSvgItem: (svgItem) =>
+    set({ selectedSvgItemId: svgItem?.id ?? null }),
+  setAttributes: (svgItem, newAttr) =>
+    set((state) => ({
+      svgItems: state.svgItems.map((el) => {
+        if (el.id === svgItem.id) {
+          return produce(el, (draft) => {
+            draft.attr = { ...draft.attr, ...newAttr };
+          });
+        }
+        return el;
+      }),
+    })),
+  reorderSvgItem: (currentIndex, newIndex) =>
+    set((state) => {
+      const result = Array.from(state.svgItems);
+      const [removed] = result.splice(currentIndex, 1);
+      result.splice(newIndex, 0, removed);
+      return { svgItems: result };
+    }),
 }));
 
 export type Tool = "rectangle" | "circle" | "polygon" | "grab" | "scale" | null;

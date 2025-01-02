@@ -9,7 +9,7 @@ type Elementprops = {
   element: SvgItem;
   index: number;
   isSelected: boolean;
-  onSelect: (elementId: number) => void;
+  onSelect: (svgItem: SvgItem) => void;
   onRemove: (id: number) => void;
 };
 
@@ -38,7 +38,7 @@ export const ElementListItem = ({
             isSelected && "bg-slate-100"
           )}
           onClick={() => {
-            onSelect(el.id);
+            onSelect(el);
           }}
         >
           <ShapeIcon shape={el.type} fill={isSelected && "#fab"} />
